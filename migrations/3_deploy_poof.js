@@ -12,6 +12,7 @@ const { toFixedHex, poseidonHash2 } = require('../src/utils')
 const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
   hashFunction: poseidonHash2,
 })
+const FEE_MANAGER = "0x7DA532a6F59232936320011106585521B9F18362"
 
 module.exports = function (deployer) {
   return deployer.then(async () => {
@@ -22,6 +23,7 @@ module.exports = function (deployer) {
     await deployer.deploy(
       Poof,
       process.env.ERC20,
+      FEE_MANAGER,
       [
         depositVerifier.address,
         withdrawVerifier.address,

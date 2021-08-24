@@ -11,6 +11,14 @@ const DepositExtData = {
     encryptedAccount: 'bytes',
   },
 }
+const TransferExtData = {
+  TransferExtData: {
+    fee: 'uint256',
+    relayer: 'address',
+    depositProofHash: 'bytes32',
+    encryptedAccount: 'bytes',
+  },
+}
 const AccountUpdate = {
   AccountUpdate: {
     inputRoot: 'bytes32',
@@ -43,26 +51,59 @@ const WithdrawExtData = {
   },
 }
 
-const pedersenHashBuffer = (buffer) => toBN(babyJub.unpackPoint(pedersenHash.hash(buffer))[0].toString())
+const pedersenHashBuffer = (buffer) =>
+  toBN(babyJub.unpackPoint(pedersenHash.hash(buffer))[0].toString())
 
-const mimcHash = (items) => toBN(mimcsponge.multiHash(items.map((item) => bigInt(item))).toString())
+const mimcHash = (items) =>
+  toBN(mimcsponge.multiHash(items.map((item) => bigInt(item))).toString())
 
 const poseidonHash = (items) => toBN(poseidon(items).toString())
 
 const poseidonHash2 = (a, b) => poseidonHash([a, b])
 
 /** Generate random number of specified byte length */
-const randomBN = (nbytes = 31) => toBN(bigInt.leBuff2int(crypto.randomBytes(nbytes)).toString())
+const randomBN = (nbytes = 31) =>
+  toBN(bigInt.leBuff2int(crypto.randomBytes(nbytes)).toString())
 
 /** BigNumber to hex string of specified length */
 const toFixedHex = (number, length = 32) =>
   '0x' +
-  (number instanceof Buffer ? number.toString('hex') : bigInt(number).toString(16)).padStart(length * 2, '0')
+  (number instanceof Buffer
+    ? number.toString('hex')
+    : bigInt(number).toString(16)
+  ).padStart(length * 2, '0')
 
 function getExtDepositArgsHash({ encryptedAccount }) {
   const encodedData = web3.eth.abi.encodeParameters(
     [DepositExtData],
     [{ encryptedAccount }],
+  )
+  const hash = soliditySha3({ t: 'bytes', v: encodedData })
+  return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
+}
+
+function getDepositProofHash(depositProof) {
+  const encodedData = web3.eth.abi.encodeParameters(['bytes'], [depositProof])
+  const hash = soliditySha3({ t: 'bytes', v: encodedData })
+  return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
+}
+
+function getExtTransferArgsHash({
+  fee,
+  relayer,
+  depositProofHash,
+  encryptedAccount,
+}) {
+  const encodedData = web3.eth.abi.encodeParameters(
+    [TransferExtData],
+    [
+      {
+        fee: toFixedHex(fee, 32),
+        relayer: toFixedHex(relayer, 20),
+        depositProofHash,
+        encryptedAccount,
+      },
+    ],
   )
   const hash = soliditySha3({ t: 'bytes', v: encodedData })
   return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
@@ -86,7 +127,10 @@ function getExtWithdrawArgsHash({ fee, recipient, relayer, encryptedAccount }) {
 
 function packEncryptedMessage(encryptedMessage) {
   const nonceBuf = Buffer.from(encryptedMessage.nonce, 'base64')
-  const ephemPublicKeyBuf = Buffer.from(encryptedMessage.ephemPublicKey, 'base64')
+  const ephemPublicKeyBuf = Buffer.from(
+    encryptedMessage.ephemPublicKey,
+    'base64',
+  )
   const ciphertextBuf = Buffer.from(encryptedMessage.ciphertext, 'base64')
   const messageBuff = Buffer.concat([
     Buffer.alloc(24 - nonceBuf.length),
@@ -138,13 +182,15 @@ function poofFormula({ balance, amount, poolWeight = 1e10 }) {
 
 function reversePoofFormula({ balance, tokens, poolWeight = 1e10 }) {
   if (balance.eq(toBN(0))) {
-    throw new Error("Result is undefined because balance is 0")
+    throw new Error('Result is undefined because balance is 0')
   }
   balance = new Decimal(balance.toString())
   tokens = new Decimal(tokens.toString())
   poolWeight = new Decimal(poolWeight.toString())
 
-  return toBN(poolWeight.times(Decimal.ln(balance.div(balance.sub(tokens)))).toFixed(0))
+  return toBN(
+    poolWeight.times(Decimal.ln(balance.div(balance.sub(tokens)))).toFixed(0),
+  )
 }
 
 module.exports = {
@@ -152,6 +198,8 @@ module.exports = {
   pedersenHashBuffer,
   bitsToNumber,
   getExtDepositArgsHash,
+  getDepositProofHash,
+  getExtTransferArgsHash,
   getExtWithdrawArgsHash,
   packEncryptedMessage,
   unpackEncryptedMessage,

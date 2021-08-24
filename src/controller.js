@@ -1,10 +1,11 @@
 const { toBN } = require('web3-utils')
-const Web3 = require('web3')
 const {
   bitsToNumber,
   toFixedHex,
   poseidonHash2,
   getExtDepositArgsHash,
+  getDepositProofHash,
+  getExtTransferArgsHash,
   getExtWithdrawArgsHash,
   packEncryptedMessage,
 } = require('./utils')
@@ -12,8 +13,6 @@ const Account = require('./account')
 const MerkleTree = require('fixed-merkle-tree')
 const websnarkUtils = require('websnark/src/utils')
 const buildGroth16 = require('websnark/src/groth16')
-
-const web3 = new Web3()
 
 class Controller {
   constructor({ contract, merkleTreeHeight, provingKeys, groth16 }) {
@@ -54,17 +53,28 @@ class Controller {
     const newAmount = account.amount.add(amount)
     const newAccount = new Account({ amount: newAmount })
 
-    accountCommitments = accountCommitments || (await this._fetchAccountCommitments())
-    const accountTree = new MerkleTree(this.merkleTreeHeight, accountCommitments, {
-      hashFunction: poseidonHash2,
-    })
+    accountCommitments =
+      accountCommitments || (await this._fetchAccountCommitments())
+    const accountTree = new MerkleTree(
+      this.merkleTreeHeight,
+      accountCommitments,
+      {
+        hashFunction: poseidonHash2,
+      },
+    )
     const zeroAccount = {
       pathElements: new Array(this.merkleTreeHeight).fill(0),
       pathIndices: new Array(this.merkleTreeHeight).fill(0),
     }
-    const accountIndex = accountTree.indexOf(account.commitment, (a, b) => a.eq(b))
-    const accountPath = accountIndex !== -1 ? accountTree.path(accountIndex) : zeroAccount
-    const accountTreeUpdate = this._updateTree(accountTree, newAccount.commitment)
+    const accountIndex = accountTree.indexOf(account.commitment, (a, b) =>
+      a.eq(b),
+    )
+    const accountPath =
+      accountIndex !== -1 ? accountTree.path(accountIndex) : zeroAccount
+    const accountTreeUpdate = this._updateTree(
+      accountTree,
+      newAccount.commitment,
+    )
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
     const extDataHash = getExtDepositArgsHash({ encryptedAccount })
@@ -120,26 +130,147 @@ class Controller {
     }
   }
 
-  async withdraw({ account, amount, recipient, publicKey, fee = 0, relayer = 0 }) {
-    const newAmount = account.amount.sub(toBN(amount)).sub(toBN(fee))
+  async transfer({
+    account,
+    publicKey,
+    depositProof,
+    depositArgs,
+    accountCommitments = null,
+    fee = toBN(0),
+    relayer = 0,
+  }) {
+    const amount = toBN(depositArgs.amount).add(fee)
+    const newAmount = account.amount.sub(amount)
+    const newAccount = new Account({ amount: newAmount })
+
+    accountCommitments =
+      accountCommitments || (await this._fetchAccountCommitments())
+    const accountTree = new MerkleTree(
+      this.merkleTreeHeight,
+      accountCommitments,
+      {
+        hashFunction: poseidonHash2,
+      },
+    )
+    const accountIndex = accountTree.indexOf(account.commitment, (a, b) =>
+      a.eq(b),
+    )
+    if (accountIndex === -1) {
+      throw new Error('No previous account found. Transfer will not work')
+    }
+    const accountPath = accountTree.path(accountIndex)
+    const accountTreeUpdate = this._updateTree(
+      accountTree,
+      newAccount.commitment,
+    )
+
+    const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
+    const depositProofHash = getDepositProofHash(depositProof)
+    const extDataHash = getExtTransferArgsHash({
+      fee,
+      relayer,
+      depositProofHash,
+      encryptedAccount,
+    })
+
+    const input = {
+      amount,
+      extDataHash,
+
+      inputAmount: account.amount,
+      inputSecret: account.secret,
+      inputNullifier: account.nullifier,
+      inputRoot: accountTreeUpdate.oldRoot,
+      inputPathElements: accountPath.pathElements,
+      inputPathIndices: bitsToNumber(accountPath.pathIndices),
+      inputNullifierHash: account.nullifierHash,
+
+      outputAmount: newAccount.amount,
+      outputSecret: newAccount.secret,
+      outputNullifier: newAccount.nullifier,
+      outputRoot: accountTreeUpdate.newRoot,
+      outputPathIndices: accountTreeUpdate.pathIndices,
+      outputPathElements: accountTreeUpdate.pathElements,
+      outputCommitment: newAccount.commitment,
+    }
+
+    const proofData = await websnarkUtils.genWitnessAndProve(
+      this.groth16,
+      input,
+      this.provingKeys.withdrawCircuit,
+      this.provingKeys.withdrawProvingKey,
+    )
+    const { proof } = websnarkUtils.toSolidityInput(proofData)
+
+    const args = {
+      amount: toFixedHex(amount),
+      extDataHash,
+      extData: {
+        fee: toFixedHex(fee),
+        relayer: toFixedHex(relayer, 20),
+        depositProofHash,
+        encryptedAccount,
+      },
+      account: {
+        inputRoot: toFixedHex(input.inputRoot),
+        inputNullifierHash: toFixedHex(input.inputNullifierHash),
+        outputRoot: toFixedHex(input.outputRoot),
+        outputPathIndices: toFixedHex(input.outputPathIndices),
+        outputCommitment: toFixedHex(input.outputCommitment),
+      },
+    }
+
+    return {
+      proof,
+      args,
+      account: newAccount,
+    }
+  }
+
+  async withdraw({
+    account,
+    amount: withdrawAmount,
+    recipient,
+    publicKey,
+    fee = toBN(0),
+    relayer = 0,
+  }) {
+    const amount = withdrawAmount.add(fee)
+    const newAmount = account.amount.sub(toBN(amount))
     const newAccount = new Account({ amount: newAmount })
 
     const accountCommitments = await this._fetchAccountCommitments()
-    const accountTree = new MerkleTree(this.merkleTreeHeight, accountCommitments, {
-      hashFunction: poseidonHash2,
-    })
-    const accountIndex = accountTree.indexOf(account.commitment, (a, b) => a.eq(b))
+    const accountTree = new MerkleTree(
+      this.merkleTreeHeight,
+      accountCommitments,
+      {
+        hashFunction: poseidonHash2,
+      },
+    )
+    const accountIndex = accountTree.indexOf(account.commitment, (a, b) =>
+      a.eq(b),
+    )
     if (accountIndex === -1) {
-      throw new Error('The accounts tree does not contain such account commitment')
+      throw new Error(
+        'The accounts tree does not contain such account commitment',
+      )
     }
     const accountPath = accountTree.path(accountIndex)
-    const accountTreeUpdate = this._updateTree(accountTree, newAccount.commitment)
+    const accountTreeUpdate = this._updateTree(
+      accountTree,
+      newAccount.commitment,
+    )
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
-    const extDataHash = getExtWithdrawArgsHash({ fee, recipient, relayer, encryptedAccount })
+    const extDataHash = getExtWithdrawArgsHash({
+      fee,
+      recipient,
+      relayer,
+      encryptedAccount,
+    })
 
     const input = {
-      amount: toBN(amount).add(toBN(fee)),
+      amount: amount,
       extDataHash,
 
       inputAmount: account.amount,
@@ -227,6 +358,7 @@ class Controller {
     return {
       proof,
       args,
+      nextAccountTree: accountTree,
     }
   }
 }

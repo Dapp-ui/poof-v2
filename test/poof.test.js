@@ -22,6 +22,7 @@ const {
 } = require('../src/utils')
 const { getEncryptionPublicKey } = require('eth-sig-util')
 const ERC20Mock = artifacts.require('ERC20Mock')
+const FeeManager = artifacts.require('FeeManager')
 const Poof = artifacts.require('Poof')
 const DepositVerifier = artifacts.require('DepositVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawVerifier')
@@ -72,8 +73,10 @@ contract('Poof', (accounts) => {
     const withdrawVerifier = await WithdrawVerifier.new()
     const treeUpdateVerifier = await TreeUpdateVerifier.new()
     token = await ERC20Mock.new()
+    feeManager = await FeeManager.new(sender)
     poof = await Poof.new(
       token.address,
+      feeManager.address,
       [
         depositVerifier.address,
         withdrawVerifier.address,
@@ -220,7 +223,7 @@ contract('Poof', (accounts) => {
     })
 
     it('should use fallback with outdated tree', async () => {
-      const { proof, args, account } = await controller.deposit({
+      const { proof, args } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -237,7 +240,7 @@ contract('Poof', (accounts) => {
         .deposit(proof, args)
         .should.be.rejectedWith('Outdated account merkle root')
 
-      const update = await controller.treeUpdate(account.commitment)
+      const update = await controller.treeUpdate(args.account.outputCommitment)
       await poof.deposit(proof, args, update.proof, update.args)
 
       const rootAfter = await poof.getLastAccountRoot()
@@ -455,6 +458,467 @@ contract('Poof', (accounts) => {
       await poof
         .deposit(proof, args, tmp.proof, update.args)
         .should.be.rejectedWith('Invalid tree update proof')
+    })
+  })
+
+  describe('#transfer', () => {
+    let fromAccount
+    beforeEach(async () => {
+      const zeroAccount = new Account()
+
+      zeroAccount.amount.should.be.eq.BN(toBN(0))
+
+      const { proof, args, account } = await controller.deposit({
+        account: zeroAccount,
+        publicKey,
+        amount,
+      })
+      await poof.deposit(proof, args)
+      fromAccount = account
+    })
+
+    it('should work', async () => {
+      const toAccount = new Account()
+      const {
+        proof: toProof,
+        args: toArgs,
+        account: outputToAccount,
+      } = await controller.deposit({
+        account: toAccount,
+        amount,
+        publicKey,
+      })
+
+      const {
+        proof: fromProof,
+        args: fromArgs,
+        account: outputFromAccount,
+      } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: toProof,
+        depositArgs: toArgs,
+      })
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+      const { logs } = await poof.transfer(
+        fromProof,
+        fromArgs,
+        toProof,
+        toArgs,
+        fromTreeUpdateProof,
+        fromTreeUpdateArgs,
+        toTreeUpdateProof,
+        toTreeUpdateArgs,
+      )
+
+      const [toAccountLog, fromAccountLog] = logs
+
+      // Verify toAccountLog
+      toAccountLog.event.should.be.equal('NewAccount')
+      toAccountLog.args.commitment.should.be.equal(
+        toFixedHex(outputToAccount.commitment),
+      )
+      toAccountLog.args.index.should.be.eq.BN(1)
+
+      // Verify fromAccountLog
+      fromAccountLog.event.should.be.equal('NewAccount')
+      fromAccountLog.args.commitment.should.be.equal(
+        toFixedHex(outputFromAccount.commitment),
+      )
+      fromAccountLog.args.index.should.be.eq.BN(2)
+    })
+
+    it('should reject for double spend', async () => {
+      const toAccount = new Account()
+      const { proof: toProof, args: toArgs } = await controller.deposit({
+        account: toAccount,
+        amount,
+        publicKey,
+      })
+
+      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: toProof,
+        depositArgs: toArgs,
+      })
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+      await poof.transfer(
+        fromProof,
+        fromArgs,
+        toProof,
+        toArgs,
+        fromTreeUpdateProof,
+        fromTreeUpdateArgs,
+        toTreeUpdateProof,
+        toTreeUpdateArgs,
+      )
+
+      await poof
+        .transfer(
+          fromProof,
+          fromArgs,
+          toProof,
+          toArgs,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith('Outdated account state')
+    })
+
+    it('should reject with incorrect insert position', async () => {
+      const toAccount = new Account()
+      const { proof: toProof, args: toArgs } = await controller.deposit({
+        account: toAccount,
+        amount,
+        publicKey,
+      })
+
+      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: toProof,
+        depositArgs: toArgs,
+      })
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+
+      const malformedArgs = JSON.parse(JSON.stringify(fromArgs))
+      let fakeIndex = toBN(fromArgs.account.outputPathIndices).sub(toBN('1'))
+      malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
+      await poof
+        .transfer(
+          fromProof,
+          malformedArgs,
+          toProof,
+          toArgs,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith('Invalid account root')
+      fakeIndex = toBN(fromArgs.account.outputPathIndices).add(toBN('1'))
+      malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
+      await poof
+        .transfer(
+          fromProof,
+          malformedArgs,
+          toProof,
+          toArgs,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith('Invalid account root')
+      fakeIndex = toBN(fromArgs.account.outputPathIndices).add(
+        toBN('10000000000000000000000000'),
+      )
+      malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
+      // Modulo function results in the same outputPathIndex. This malformation gets caught at proof verification
+      await poof
+        .transfer(
+          fromProof,
+          malformedArgs,
+          toProof,
+          toArgs,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith('Invalid withdrawal proof')
+
+      await poof.transfer(
+        fromProof,
+        fromArgs,
+        toProof,
+        toArgs,
+        fromTreeUpdateProof,
+        fromTreeUpdateArgs,
+        toTreeUpdateProof,
+        toTreeUpdateArgs,
+      )
+    })
+
+    it('should reject with incorrect external data hash', async () => {
+      const toAccount = new Account()
+      const { proof: toProof, args: toArgs } = await controller.deposit({
+        account: toAccount,
+        amount,
+        publicKey,
+      })
+
+      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: toProof,
+        depositArgs: toArgs,
+      })
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+
+      const malformedArgs = JSON.parse(JSON.stringify(fromArgs))
+      malformedArgs.extDataHash = toFixedHex('0xdeadbeef')
+      await poof
+        .transfer(
+          fromProof,
+          malformedArgs,
+          toProof,
+          toArgs,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith("Incorrect 'from' external data hash")
+      malformedArgs.extDataHash = toFixedHex('0x00')
+      await poof
+        .transfer(
+          fromProof,
+          malformedArgs,
+          toProof,
+          toArgs,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith("Incorrect 'from' external data hash")
+
+      await poof.transfer(
+        fromProof,
+        fromArgs,
+        toProof,
+        toArgs,
+        fromTreeUpdateProof,
+        fromTreeUpdateArgs,
+        toTreeUpdateProof,
+        toTreeUpdateArgs,
+      )
+    })
+
+    it('should reject with incorrect "to" params', async () => {
+      const toAccount = new Account()
+      const { proof: toProof, args: toArgs } = await controller.deposit({
+        account: toAccount,
+        amount,
+        publicKey,
+      })
+
+      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: toProof,
+        depositArgs: toArgs,
+      })
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+
+      // Try to change the 'to' params
+      const { proof: malToProof, args: malToArgs } = await controller.deposit({
+        account: new Account(),
+        amount,
+        publicKey,
+      })
+      const {
+        proof: malToTreeUpdateProof1,
+        args: malToTreeUpdateArgs1,
+        nextAccountTree: malNextAccountTree1,
+      } = await controller.treeUpdate(malToArgs.account.outputCommitment)
+      const { proof: malFromTreeUpdateProof1, args: malFromTreeUpdateArgs1 } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          malNextAccountTree1,
+        )
+      await poof
+        .transfer(
+          fromProof,
+          fromArgs,
+          malToProof,
+          malToArgs,
+          malFromTreeUpdateProof1,
+          malFromTreeUpdateArgs1,
+          malToTreeUpdateProof1,
+          malToTreeUpdateArgs1,
+        )
+        .should.be.rejectedWith(
+          "'from' proof hash does not match 'to' proof hash",
+        )
+
+      // Also try to edit depositProofHash
+      const { args: malFromArgs } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: malToProof,
+        depositArgs: malToArgs,
+      })
+      const {
+        proof: malToTreeUpdateProof2,
+        args: malToTreeUpdateArgs2,
+        nextAccountTree: malNextAccountTree2,
+      } = await controller.treeUpdate(malToArgs.account.outputCommitment)
+      const { proof: malFromTreeUpdateProof2, args: malFromTreeUpdateArgs2 } =
+        await controller.treeUpdate(
+          malFromArgs.account.outputCommitment,
+          malNextAccountTree2,
+        )
+      await poof
+        .transfer(
+          fromProof,
+          malFromArgs,
+          malToProof,
+          malToArgs,
+          malFromTreeUpdateProof2,
+          malFromTreeUpdateArgs2,
+          malToTreeUpdateProof2,
+          malToTreeUpdateArgs2,
+        )
+        .should.be.rejectedWith('Invalid withdrawal proof')
+
+      await poof.transfer(
+        fromProof,
+        fromArgs,
+        toProof,
+        toArgs,
+        fromTreeUpdateProof,
+        fromTreeUpdateArgs,
+        toTreeUpdateProof,
+        toTreeUpdateArgs,
+      )
+    })
+
+    it("should reject for invalid 'from' proof", async () => {
+      const { proof: toProof1, args: toArgs1 } = await controller.deposit({
+        account: new Account(),
+        amount,
+        publicKey,
+      })
+      const { args: toArgs2 } = await controller.deposit({
+        account: new Account(),
+        amount,
+        publicKey,
+      })
+
+      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+        account: fromAccount,
+        publicKey,
+        depositProof: toProof1,
+        depositArgs: toArgs1,
+      })
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs2.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+
+      await poof
+        .transfer(
+          fromProof,
+          fromArgs,
+          toProof1,
+          toArgs2,
+          fromTreeUpdateProof,
+          fromTreeUpdateArgs,
+          toTreeUpdateProof,
+          toTreeUpdateArgs,
+        )
+        .should.be.rejectedWith('Invalid deposit proof')
+    })
+
+    it('should send fee to relayer', async () => {
+      const fee = toBN(3)
+
+      const { proof: toProof, args: toArgs } = await controller.deposit({
+        account: new Account(),
+        amount: amount.sub(fee),
+        publicKey,
+      })
+
+      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+        account: fromAccount,
+        amount: toBN(toArgs.amount).sub(fee),
+        publicKey,
+        depositProof: toProof,
+        depositArgs: toArgs,
+        fee,
+        relayer,
+      })
+
+      const {
+        proof: toTreeUpdateProof,
+        args: toTreeUpdateArgs,
+        nextAccountTree,
+      } = await controller.treeUpdate(toArgs.account.outputCommitment)
+      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
+        await controller.treeUpdate(
+          fromArgs.account.outputCommitment,
+          nextAccountTree,
+        )
+      const relayerBalanceBefore = await token.balanceOf(relayer)
+      await poof.transfer(
+        fromProof,
+        fromArgs,
+        toProof,
+        toArgs,
+        fromTreeUpdateProof,
+        fromTreeUpdateArgs,
+        toTreeUpdateProof,
+        toTreeUpdateArgs,
+      )
+      const relayerBalanceAfter = await token.balanceOf(relayer)
+
+      relayerBalanceAfter.should.be.eq.BN(relayerBalanceBefore.add(fee))
     })
   })
 
@@ -708,9 +1172,9 @@ contract('Poof', (accounts) => {
     it('should reject for malformed relayer and recipient address and fee', async () => {
       const fakeRelayer = accounts[6]
       const fakeRecipient = accounts[7]
-      const fee = 12
+      const fee = toBN(12)
       const fakeFee = 123
-      const amountToWithdraw = amount.sub(toBN(fee))
+      const amountToWithdraw = amount.sub(fee)
       const { proof, args } = await controller.withdraw({
         account,
         amount: amountToWithdraw,

@@ -9,10 +9,19 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./interfaces/IVerifier.sol";
 
+// TODO
+// 1. Support lending
+
+interface IFeeManager {
+  function feeTo() external view returns (address);
+  function protocolFeeDivisor() external view returns (uint256);
+}
+
 contract Poof is Ownable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
+  IFeeManager public feeManager;
   IERC20 public token;
 
   IVerifier public depositVerifier;
@@ -54,6 +63,20 @@ contract Poof is Ownable {
     AccountUpdate account;
   }
 
+  struct TransferExtData {
+    uint256 fee;
+    address relayer;
+    bytes32 depositProofHash;
+    bytes encryptedAccount;
+  }
+
+  struct TransferArgs {
+    uint256 amount;
+    bytes32 extDataHash;
+    TransferExtData extData;
+    AccountUpdate account;
+  }
+
   struct WithdrawExtData {
     uint256 fee;
     address recipient;
@@ -68,17 +91,14 @@ contract Poof is Ownable {
     AccountUpdate account;
   }
 
-  struct Rate {
-    address instance;
-    uint256 value;
-  }
-
   constructor(
     IERC20 _token,
+    IFeeManager _feeManager,
     address[3] memory _verifiers,
     bytes32 _accountRoot
   ) {
     token = _token;
+    feeManager = _feeManager;
     accountRoots[0] = _accountRoot;
     // prettier-ignore
     _setVerifiers([
@@ -86,6 +106,82 @@ contract Poof is Ownable {
       IVerifier(_verifiers[1]),
       IVerifier(_verifiers[2])
     ]);
+  }
+
+  function transfer(
+    bytes memory _fromProof,
+    TransferArgs memory _fromArgs,
+    bytes memory _toProof,
+    DepositArgs memory _toArgs,
+    bytes memory _fromTreeUpdateProof,
+    TreeUpdateArgs memory _fromTreeUpdateArgs,
+    bytes memory _toTreeUpdateProof,
+    TreeUpdateArgs memory _toTreeUpdateArgs
+  ) public {
+    require(_fromArgs.amount - _fromArgs.extData.fee == _toArgs.amount, "Transfer is unfair");
+    require(_fromArgs.extData.depositProofHash == keccak248(abi.encode(_toProof)), "'from' proof hash does not match 'to' proof hash");
+
+    // Validate and update the `to` account
+    validateAccountUpdate(_toArgs.account, _toTreeUpdateProof, _toTreeUpdateArgs);
+    require(_toArgs.extDataHash == keccak248(abi.encode(_toArgs.extData)), "Incorrect 'to' external data hash");
+    require(
+      depositVerifier.verifyProof(
+        _toProof,
+        [
+          uint256(_toArgs.amount),
+          uint256(_toArgs.extDataHash),
+          uint256(_toArgs.account.inputRoot),
+          uint256(_toArgs.account.inputNullifierHash),
+          uint256(_toArgs.account.outputRoot),
+          uint256(_toArgs.account.outputPathIndices),
+          uint256(_toArgs.account.outputCommitment)
+        ]
+      ),
+      "Invalid deposit proof"
+    );
+
+    accountNullifiers[_toArgs.account.inputNullifierHash] = true;
+    insertAccountRoot(_toArgs.account.inputRoot == getLastAccountRoot() ? _toArgs.account.outputRoot : _toTreeUpdateArgs.newRoot);
+
+    emit NewAccount(
+      _toArgs.account.outputCommitment,
+      _toArgs.account.inputNullifierHash,
+      _toArgs.extData.encryptedAccount,
+      accountCount - 1
+    );
+
+    // Validate and update the `from` account
+    validateAccountUpdate(_fromArgs.account, _fromTreeUpdateProof, _fromTreeUpdateArgs);
+    require(_fromArgs.extDataHash == keccak248(abi.encode(_fromArgs.extData)), "Incorrect 'from' external data hash");
+    require(
+      withdrawVerifier.verifyProof(
+        _fromProof,
+        [
+          uint256(_fromArgs.amount),
+          uint256(_fromArgs.extDataHash),
+          uint256(_fromArgs.account.inputRoot),
+          uint256(_fromArgs.account.inputNullifierHash),
+          uint256(_fromArgs.account.outputRoot),
+          uint256(_fromArgs.account.outputPathIndices),
+          uint256(_fromArgs.account.outputCommitment)
+        ]
+      ),
+      "Invalid withdrawal proof"
+    );
+
+    if (_fromArgs.extData.fee > 0) {
+      token.transfer(_fromArgs.extData.relayer, _fromArgs.extData.fee);
+    }
+
+    accountNullifiers[_fromArgs.account.inputNullifierHash] = true;
+    insertAccountRoot(_fromArgs.account.inputRoot == getLastAccountRoot() ? _fromArgs.account.outputRoot : _fromTreeUpdateArgs.newRoot);
+
+    emit NewAccount(
+      _fromArgs.account.outputCommitment,
+      _fromArgs.account.inputNullifierHash,
+      _fromArgs.extData.encryptedAccount,
+      accountCount - 1
+    );
   }
 
   function deposit(bytes memory _proof, DepositArgs memory _args) public {
@@ -156,13 +252,21 @@ contract Poof is Ownable {
       ),
       "Invalid withdrawal proof"
     );
-    uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
+
+    address feeTo = feeManager.feeTo();
+    uint256 protocolFeeDivisor = feeManager.protocolFeeDivisor();
+
+    bool feeOn = feeTo != address(0) && protocolFeeDivisor != 0;
+    uint256 protocolFee = feeOn ? _args.amount.div(protocolFeeDivisor) : 0;
+    uint256 amount = _args.amount.sub(_args.extData.fee.add(protocolFee), "Amount should be greater than fee");
     if (amount > 0) {
       token.transfer(_args.extData.recipient, amount);
     }
-    // Note. The relayer swap rate always will be worse than estimated
     if (_args.extData.fee > 0) {
       token.transfer(_args.extData.relayer, _args.extData.fee);
+    }
+    if (feeOn) {
+      token.transfer(feeTo, protocolFee);
     }
 
     insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);
@@ -178,6 +282,10 @@ contract Poof is Ownable {
 
   function setVerifiers(IVerifier[3] calldata _verifiers) external onlyOwner {
     _setVerifiers(_verifiers);
+  }
+
+  function setFeeManager(IFeeManager _feeManager) external onlyOwner {
+    feeManager = _feeManager;
   }
 
   // ------VIEW-------
