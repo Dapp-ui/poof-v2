@@ -9,21 +9,15 @@ const {
   getExtWithdrawArgsHash,
   packEncryptedMessage,
 } = require('./utils')
+const { utils } = require('ffjavascript')
 const Account = require('./account')
 const MerkleTree = require('fixed-merkle-tree')
-const websnarkUtils = require('websnark/src/utils')
-const buildGroth16 = require('websnark/src/groth16')
+const snarkjs = require('snarkjs')
 
 class Controller {
-  constructor({ contract, merkleTreeHeight, provingKeys, groth16 }) {
+  constructor({ contract, merkleTreeHeight }) {
     this.merkleTreeHeight = Number(merkleTreeHeight)
-    this.provingKeys = provingKeys
     this.contract = contract
-    this.groth16 = groth16
-  }
-
-  async init() {
-    this.groth16 = await buildGroth16()
   }
 
   async _fetchAccountCommitments() {
@@ -100,13 +94,17 @@ class Controller {
       outputCommitment: newAccount.commitment,
     }
 
-    const proofData = await websnarkUtils.genWitnessAndProve(
-      this.groth16,
-      input,
-      this.provingKeys.depositCircuit,
-      this.provingKeys.depositProvingKey,
+    const { proof: proofData } = await snarkjs.plonk.fullProve(
+      utils.stringifyBigInts(input),
+      'build/circuits/Deposit.wasm',
+      'build/circuits/Deposit_circuit_final.zkey',
     )
-    const { proof } = websnarkUtils.toSolidityInput(proofData)
+    const [proof] = (
+      await snarkjs.plonk.exportSolidityCallData(
+        utils.unstringifyBigInts(proofData),
+        [],
+      )
+    ).split(',')
 
     const args = {
       amount: toFixedHex(amount),
@@ -194,13 +192,17 @@ class Controller {
       outputCommitment: newAccount.commitment,
     }
 
-    const proofData = await websnarkUtils.genWitnessAndProve(
-      this.groth16,
-      input,
-      this.provingKeys.withdrawCircuit,
-      this.provingKeys.withdrawProvingKey,
+    const { proof: proofData } = await snarkjs.plonk.fullProve(
+      utils.stringifyBigInts(input),
+      'build/circuits/Withdraw.wasm',
+      'build/circuits/Withdraw_circuit_final.zkey',
     )
-    const { proof } = websnarkUtils.toSolidityInput(proofData)
+    const [proof] = (
+      await snarkjs.plonk.exportSolidityCallData(
+        utils.unstringifyBigInts(proofData),
+        [],
+      )
+    ).split(',')
 
     const args = {
       amount: toFixedHex(amount),
@@ -290,13 +292,17 @@ class Controller {
       outputCommitment: newAccount.commitment,
     }
 
-    const proofData = await websnarkUtils.genWitnessAndProve(
-      this.groth16,
-      input,
-      this.provingKeys.withdrawCircuit,
-      this.provingKeys.withdrawProvingKey,
+    const { proof: proofData } = await snarkjs.plonk.fullProve(
+      utils.stringifyBigInts(input),
+      'build/circuits/Withdraw.wasm',
+      'build/circuits/Withdraw_circuit_final.zkey',
     )
-    const { proof } = websnarkUtils.toSolidityInput(proofData)
+    const [proof] = (
+      await snarkjs.plonk.exportSolidityCallData(
+        utils.unstringifyBigInts(proofData),
+        [],
+      )
+    ).split(',')
 
     const args = {
       amount: toFixedHex(input.amount),
@@ -340,13 +346,17 @@ class Controller {
       pathElements: accountTreeUpdate.pathElements,
     }
 
-    const proofData = await websnarkUtils.genWitnessAndProve(
-      this.groth16,
+    const { proof: proofData } = await snarkjs.plonk.fullProve(
       input,
-      this.provingKeys.treeUpdateCircuit,
-      this.provingKeys.treeUpdateProvingKey,
+      'build/circuits/TreeUpdate.wasm',
+      'build/circuits/TreeUpdate_circuit_final.zkey',
     )
-    const { proof } = websnarkUtils.toSolidityInput(proofData)
+    const [proof] = (
+      await snarkjs.plonk.exportSolidityCallData(
+        utils.unstringifyBigInts(proofData),
+        [],
+      )
+    ).split(',')
 
     const args = {
       oldRoot: toFixedHex(input.oldRoot),

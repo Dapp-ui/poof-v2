@@ -4,7 +4,6 @@ require('chai')
   .use(require('chai-as-promised'))
   .should()
 
-const fs = require('fs')
 const { toBN } = require('web3-utils')
 const {
   takeSnapshot,
@@ -27,19 +26,6 @@ const Poof = artifacts.require('Poof')
 const DepositVerifier = artifacts.require('DepositVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawVerifier')
 const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
-const provingKeys = {
-  depositCircuit: require('../build/circuits/Deposit.json'),
-  withdrawCircuit: require('../build/circuits/Withdraw.json'),
-  treeUpdateCircuit: require('../build/circuits/TreeUpdate.json'),
-  depositProvingKey: fs.readFileSync('./build/circuits/Deposit_proving_key.bin')
-    .buffer,
-  withdrawProvingKey: fs.readFileSync(
-    './build/circuits/Withdraw_proving_key.bin',
-  ).buffer,
-  treeUpdateProvingKey: fs.readFileSync(
-    './build/circuits/TreeUpdate_proving_key.bin',
-  ).buffer,
-}
 const MerkleTree = require('fixed-merkle-tree')
 
 // Set time to beginning of a second
@@ -58,7 +44,7 @@ contract('Poof', (accounts) => {
   const recipient = accounts[1]
   // eslint-disable-next-line no-unused-vars
   const relayer = accounts[2]
-  const levels = 20
+  const levels = 3
   let snapshotId
   const AnotherWeb3 = require('web3')
   let contract
@@ -92,9 +78,7 @@ contract('Poof', (accounts) => {
     controller = new Controller({
       contract,
       merkleTreeHeight: levels,
-      provingKeys,
     })
-    await controller.init()
     snapshotId = await takeSnapshot()
   })
 

@@ -11,9 +11,9 @@
     "contracts/*"
   ],
   "scripts": {
-    "compile": "truffle compile",
+    "compile": "hardhat compile",
     "coverage": "yarn compile && truffle run coverage",
-    "test": "truffle test",
+    "test": "hardhat test",
     "test:stacktrace": "yarn test --stacktrace",
     "eslint": "eslint --ext .js --ignore-path .gitignore .",
     "prettier:check": "prettier --check . --config .prettierrc",
@@ -25,15 +25,23 @@
     "circuit": "mkdir -p build/circuits && yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:treeUpdate"
   },
   "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.0",
+    "@nomiclabs/hardhat-truffle5": "^2.0.0",
+    "@nomiclabs/hardhat-waffle": "^2.0.0",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "^4.1.0",
     "babel-eslint": "^10.1.0",
     "bn-chai": "^1.0.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "circom": "0.0.35",
+    "circom": "0.5.45",
     "eslint": "^7.5.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.4",
+    "ethereum-waffle": "^3.0.0",
+    "ethers": "^5.0.0",
+    "hardhat": "^2.6.2",
+    "mocha": "^9.1.1",
     "prettier": "^2.1.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.59",
     "rlp": "^2.2.6",
@@ -45,15 +53,15 @@
     "truffle-plugin-verify": "^0.3.11"
   },
   "dependencies": {
-    "@nomspace/nomspace": "^1.0.3",
-    "@poofcash/poof-token": "^1.0.8",
-    "circomlib": "git+https://github.com/tornadocash/circomlib.git#3b492f9801573eebcfe1b6c584afe8a3beecf2b4",
+    "big-integer": "^1.6.48",
+    "circomlib": "0.5.3",
     "decimal.js": "^10.2.0",
     "dotenv": "^10.0.0",
     "eth-sig-util": "^2.5.3",
+    "ffjavascript": "^0.2.38",
     "fixed-merkle-tree": "^0.3.4",
-    "snarkjs": "git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5",
-    "web3": "^1.2.11",
-    "websnark": "git+https://github.com/tornadocash/websnark.git#86a526718cd6f6f5d31bdb1fe26a9ec8819f633e"
+    "snarkjs": "^0.4.7",
+    "web3": "^1.5.2",
+    "websnark": "^0.0.5"
   }
 }

@@ -115,6 +115,7 @@ contract Poof is Ownable {
     }
     return res;
   }
+
   function toDynamicArray(uint256[7] memory arr) internal pure returns (uint256[] memory) {
     uint256[] memory res = new uint256[](7);
     for (uint i = 0; i < arr.length; i++) {

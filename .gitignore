@@ -9,3 +9,11 @@ build
 circuits/*.json
 circuits/*.bin
 .env
+ptau
+
+node_modules
+.env
+
+#Hardhat files
+cache
+artifacts

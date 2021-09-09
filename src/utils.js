@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const Decimal = require('decimal.js')
-const { bigInt } = require('snarkjs')
-const { toBN, soliditySha3 } = require('web3-utils')
+const bigInt = require('big-integer')
+const { toBN, soliditySha3, isBN, numberToHex, isHex } = require('web3-utils')
 const Web3 = require('web3')
 const web3 = new Web3()
 const { babyJub, pedersenHash, mimcsponge, poseidon } = require('circomlib')
@@ -63,15 +63,34 @@ const poseidonHash2 = (a, b) => poseidonHash([a, b])
 
 /** Generate random number of specified byte length */
 const randomBN = (nbytes = 31) =>
-  toBN(bigInt.leBuff2int(crypto.randomBytes(nbytes)).toString())
+  toBN(`0x${crypto.randomBytes(nbytes).toString('hex')}`)
 
 /** BigNumber to hex string of specified length */
-const toFixedHex = (number, length = 32) =>
-  '0x' +
-  (number instanceof Buffer
-    ? number.toString('hex')
-    : bigInt(number).toString(16)
-  ).padStart(length * 2, '0')
+const toFixedHex = (number, length = 32) => {
+  if (isBN(number)) {
+    return (
+      '0x' +
+      numberToHex(number)
+        .slice(2)
+        .padStart(length * 2, '0')
+    )
+  } else if (number.toString().startsWith('0x')) {
+    return (
+      '0x' +
+      number
+        .toString()
+        .slice(2)
+        .padStart(length * 2, '0')
+    )
+  }
+  return (
+    '0x' +
+    (number instanceof Buffer
+      ? number.toString('hex')
+      : bigInt(number).toString(16)
+    ).padStart(length * 2, '0')
+  )
+}
 
 function getExtDepositArgsHash({ encryptedAccount }) {
   const encodedData = web3.eth.abi.encodeParameters(
