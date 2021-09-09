@@ -108,6 +108,21 @@ contract Poof is Ownable {
     ]);
   }
 
+  function toDynamicArray(uint256[4] memory arr) internal pure returns (uint256[] memory) {
+    uint256[] memory res = new uint256[](4);
+    for (uint i = 0; i < arr.length; i++) {
+      res[i] = arr[i];
+    }
+    return res;
+  }
+  function toDynamicArray(uint256[7] memory arr) internal pure returns (uint256[] memory) {
+    uint256[] memory res = new uint256[](7);
+    for (uint i = 0; i < arr.length; i++) {
+      res[i] = arr[i];
+    }
+    return res;
+  }
+
   function transfer(
     bytes memory _fromProof,
     TransferArgs memory _fromArgs,
@@ -127,7 +142,7 @@ contract Poof is Ownable {
     require(
       depositVerifier.verifyProof(
         _toProof,
-        [
+        toDynamicArray([
           uint256(_toArgs.amount),
           uint256(_toArgs.extDataHash),
           uint256(_toArgs.account.inputRoot),
@@ -135,7 +150,7 @@ contract Poof is Ownable {
           uint256(_toArgs.account.outputRoot),
           uint256(_toArgs.account.outputPathIndices),
           uint256(_toArgs.account.outputCommitment)
-        ]
+        ])
       ),
       "Invalid deposit proof"
     );
@@ -156,7 +171,7 @@ contract Poof is Ownable {
     require(
       withdrawVerifier.verifyProof(
         _fromProof,
-        [
+        toDynamicArray([
           uint256(_fromArgs.amount),
           uint256(_fromArgs.extDataHash),
           uint256(_fromArgs.account.inputRoot),
@@ -164,7 +179,7 @@ contract Poof is Ownable {
           uint256(_fromArgs.account.outputRoot),
           uint256(_fromArgs.account.outputPathIndices),
           uint256(_fromArgs.account.outputCommitment)
-        ]
+        ])
       ),
       "Invalid withdrawal proof"
     );
@@ -200,7 +215,7 @@ contract Poof is Ownable {
     require(
       depositVerifier.verifyProof(
         _proof,
-        [
+        toDynamicArray([
           uint256(_args.amount),
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
@@ -208,7 +223,7 @@ contract Poof is Ownable {
           uint256(_args.account.outputRoot),
           uint256(_args.account.outputPathIndices),
           uint256(_args.account.outputCommitment)
-        ]
+        ])
       ),
       "Invalid deposit proof"
     );
@@ -240,7 +255,7 @@ contract Poof is Ownable {
     require(
       withdrawVerifier.verifyProof(
         _proof,
-        [
+        toDynamicArray([
           uint256(_args.amount),
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
@@ -248,7 +263,7 @@ contract Poof is Ownable {
           uint256(_args.account.outputRoot),
           uint256(_args.account.outputPathIndices),
           uint256(_args.account.outputCommitment)
-        ]
+        ])
       ),
       "Invalid withdrawal proof"
     );
@@ -322,7 +337,7 @@ contract Poof is Ownable {
     require(
       treeUpdateVerifier.verifyProof(
         _proof,
-        [uint256(_args.oldRoot), uint256(_args.newRoot), uint256(_args.leaf), uint256(_args.pathIndices)]
+        toDynamicArray([uint256(_args.oldRoot), uint256(_args.newRoot), uint256(_args.leaf), uint256(_args.pathIndices)])
       ),
       "Invalid tree update proof"
     );
