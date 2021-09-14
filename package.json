@@ -53,6 +53,7 @@
     "truffle-plugin-verify": "^0.3.11"
   },
   "dependencies": {
+    "@truffle/hdwallet-provider": "^1.5.0",
     "big-integer": "^1.6.48",
     "circomlib": "0.5.3",
     "decimal.js": "^10.2.0",
