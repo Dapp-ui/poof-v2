@@ -1,7 +1,6 @@
 include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
-include "./Utils.circom";
 include "./MerkleTree.circom";
 include "./MerkleTreeUpdater.circom";
 

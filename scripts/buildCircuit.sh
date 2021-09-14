@@ -7,7 +7,8 @@ yarn snarkjs info -c build/circuits/$1.r1cs
 
 # Powers of Tau [DEV]
 if [ ! -f ptau/pot_final.ptau ]; then
-  wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_20.ptau -O ptau/pot_final.ptau
+  mkdir -p ptau
+  wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_18.ptau -O ptau/pot_final.ptau
 fi
 
 yarn snarkjs plonk setup build/circuits/$1.r1cs ptau/pot_final.ptau build/circuits/$1_circuit_final.zkey
