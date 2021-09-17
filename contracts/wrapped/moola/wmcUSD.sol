@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "./WrappedMToken.sol";
 
 contract wmcUSD is WrappedMToken {
-  constructor(address _mToken, address _token, address _lendingPool)
-    WrappedMToken("Wrapped mcUSD", "wmcUSD", _mToken, _token, _lendingPool)
+  constructor(address _mToken, address _token, address _lendingPool, address _feeToSetter)
+    WrappedMToken("Wrapped mcUSD", "wmcUSD", _mToken, _token, _lendingPool, _feeToSetter)
   {}
 }

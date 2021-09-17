@@ -11,6 +11,7 @@ const MockLendingPool = artifacts.require('MockLendingPool')
 
 contract('WrappedMToken', (accounts) => {
   const sender = accounts[0]
+  const feeToSetter = accounts[1]
   let token
   let wToken
   let lendingPool
@@ -24,8 +25,9 @@ contract('WrappedMToken', (accounts) => {
       lendingPool.address,
       token.address,
       lendingPool.address,
+      feeToSetter,
     )
-    await token.approve(wToken.address, 100)
+    await token.approve(wToken.address, 10000)
   })
 
   describe('#debtToUnderlying', () => {
@@ -70,7 +72,7 @@ contract('WrappedMToken', (accounts) => {
         .wrap(0)
         .should.be.rejectedWith('underlyingAmount cannot be 0')
 
-      const amount1 = toBN(5)
+      const amount1 = toBN(500)
       const balanceBefore1 = await token.balanceOf(sender)
       const wBalanceBefore1 = await wToken.balanceOf(sender)
       await wToken.wrap(amount1)
@@ -80,7 +82,7 @@ contract('WrappedMToken', (accounts) => {
       balanceBefore1.should.be.eq.BN(balanceAfter1.add(amount1))
       wBalanceAfter1.should.be.eq.BN(wBalanceBefore1.add(toWei(amount1)))
 
-      const amount2 = toBN(10)
+      const amount2 = toBN(1000)
       const balanceBefore2 = await token.balanceOf(sender)
       const wBalanceBefore2 = await wToken.balanceOf(sender)
       await wToken.wrap(amount2)
@@ -95,9 +97,9 @@ contract('WrappedMToken', (accounts) => {
   describe('interest bearing', () => {
     it('reflect interest earned in the underlying', async () => {
       // Double the amount in the pool
-      await token.approve(lendingPool.address, 15)
-      await lendingPool.deposit(token.address, 15, 0)
-      await lendingPool.transfer(wToken.address, 15)
+      await token.approve(lendingPool.address, 1500)
+      await lendingPool.deposit(token.address, 1500, 0)
+      await lendingPool.transfer(wToken.address, 1500)
 
       const underlyingAmount = await wToken.debtToUnderlying(toWei('1'))
       underlyingAmount.should.be.eq.BN(2)
@@ -111,27 +113,33 @@ contract('WrappedMToken', (accounts) => {
     it('should work', async () => {
       await wToken.unwrap(0).should.be.rejectedWith('debtAmount cannot be 0')
 
-      const amount1 = toBN(toWei('5'))
+      const amount1 = toBN(toWei('500'))
       const balanceBefore1 = await token.balanceOf(sender)
       const wBalanceBefore1 = await wToken.balanceOf(sender)
       await wToken.unwrap(amount1)
       const balanceAfter1 = await token.balanceOf(sender)
       const wBalanceAfter1 = await wToken.balanceOf(sender)
 
+      // Should receive 200% - 1% return
       balanceAfter1.should.be.eq.BN(
-        balanceBefore1.add(toBN(fromWei(amount1.mul(toBN(2))))),
+        balanceBefore1.add(
+          toBN(fromWei(amount1.mul(toBN(199)).div(toBN(100)))),
+        ),
       )
       wBalanceBefore1.should.be.eq.BN(wBalanceAfter1.add(amount1))
 
-      const amount2 = toBN(toWei('10'))
+      const amount2 = toBN(toWei('1000'))
       const balanceBefore2 = await token.balanceOf(sender)
       const wBalanceBefore2 = await wToken.balanceOf(sender)
       await wToken.unwrap(amount2)
       const balanceAfter2 = await token.balanceOf(sender)
       const wBalanceAfter2 = await wToken.balanceOf(sender)
 
+      // Should receive 200% - 1% return
       balanceAfter2.should.be.eq.BN(
-        balanceBefore2.add(toBN(fromWei(amount2.mul(toBN(2))))),
+        balanceBefore2.add(
+          toBN(fromWei(amount2.mul(toBN(199)).div(toBN(100)))),
+        ),
       )
       wBalanceBefore2.should.be.eq.BN(wBalanceAfter2.add(amount2))
     })

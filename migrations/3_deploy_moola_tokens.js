@@ -25,7 +25,8 @@ module.exports = function (deployer, network) {
       network === 'mainnet'
         ? '0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73'
         : '0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F'
-    await deployer.deploy(wmcUSD, mcUSD, cUSD, lendingPool)
-    await deployer.deploy(wmcEUR, mcEUR, cEUR, lendingPool)
+
+    await deployer.deploy(wmcUSD, mcUSD, cUSD, lendingPool, process.env.FEE_TO_SETTER)
+    await deployer.deploy(wmcEUR, mcEUR, cEUR, lendingPool, process.env.FEE_TO_SETTER)
   })
 }
