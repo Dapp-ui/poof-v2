@@ -9,6 +9,7 @@ const { babyJub, pedersenHash, mimcsponge, poseidon } = require('circomlib')
 const DepositExtData = {
   DepositExtData: {
     encryptedAccount: 'bytes',
+    operation: 'uint8',
   },
 }
 const TransferExtData = {
@@ -48,6 +49,7 @@ const WithdrawExtData = {
     recipient: 'address',
     relayer: 'address',
     encryptedAccount: 'bytes',
+    operation: 'uint8',
   },
 }
 
@@ -92,10 +94,10 @@ const toFixedHex = (number, length = 32) => {
   )
 }
 
-function getExtDepositArgsHash({ encryptedAccount }) {
+function getExtDepositArgsHash({ encryptedAccount, operation }) {
   const encodedData = web3.eth.abi.encodeParameters(
     [DepositExtData],
-    [{ encryptedAccount }],
+    [{ encryptedAccount, operation }],
   )
   const hash = soliditySha3({ t: 'bytes', v: encodedData })
   return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
@@ -128,7 +130,13 @@ function getExtTransferArgsHash({
   return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
 }
 
-function getExtWithdrawArgsHash({ fee, recipient, relayer, encryptedAccount }) {
+function getExtWithdrawArgsHash({
+  fee,
+  recipient,
+  relayer,
+  encryptedAccount,
+  operation,
+}) {
   const encodedData = web3.eth.abi.encodeParameters(
     [WithdrawExtData],
     [
@@ -137,6 +145,7 @@ function getExtWithdrawArgsHash({ fee, recipient, relayer, encryptedAccount }) {
         recipient: toFixedHex(recipient, 20),
         relayer: toFixedHex(relayer, 20),
         encryptedAccount,
+        operation,
       },
     ],
   )

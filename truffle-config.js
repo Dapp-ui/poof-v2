@@ -20,7 +20,7 @@ module.exports = {
         }),
       network_id: 44787,
       gas: 6000000,
-      gasPrice: toWei('0.1', 'gwei'),
+      gasPrice: toWei('0.5', 'gwei'),
     },
     mainnet: {
       provider: () =>

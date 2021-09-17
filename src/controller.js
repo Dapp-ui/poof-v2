@@ -43,7 +43,13 @@ class Controller {
     }
   }
 
-  async deposit({ account, amount, publicKey, accountCommitments = null }) {
+  async deposit({
+    account,
+    amount,
+    publicKey,
+    accountCommitments = null,
+    operation = 0,
+  }) {
     const newAmount = account.amount.add(amount)
     const newAccount = new Account({ amount: newAmount })
 
@@ -71,7 +77,7 @@ class Controller {
     )
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
-    const extDataHash = getExtDepositArgsHash({ encryptedAccount })
+    const extDataHash = getExtDepositArgsHash({ encryptedAccount, operation })
 
     const input = {
       amount,
@@ -111,6 +117,7 @@ class Controller {
       extDataHash,
       extData: {
         encryptedAccount,
+        operation,
       },
       account: {
         inputRoot: toFixedHex(input.inputRoot),
@@ -236,6 +243,7 @@ class Controller {
     publicKey,
     fee = toBN(0),
     relayer = 0,
+    operation = 1,
   }) {
     const amount = withdrawAmount.add(fee)
     const newAmount = account.amount.sub(toBN(amount))
@@ -269,6 +277,7 @@ class Controller {
       recipient,
       relayer,
       encryptedAccount,
+      operation,
     })
 
     const input = {
@@ -297,6 +306,7 @@ class Controller {
       'build/circuits/Withdraw.wasm',
       'build/circuits/Withdraw_circuit_final.zkey',
     )
+
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(
         utils.unstringifyBigInts(proofData),
@@ -312,6 +322,7 @@ class Controller {
         recipient: toFixedHex(recipient, 20),
         relayer: toFixedHex(relayer, 20),
         encryptedAccount,
+        operation,
       },
       account: {
         inputRoot: toFixedHex(input.inputRoot),

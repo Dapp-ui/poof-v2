@@ -2,26 +2,18 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./interfaces/IVerifier.sol";
 
-// TODO
-// 1. Support lending
-
-interface IFeeManager {
-  function feeTo() external view returns (address);
-  function protocolFeeDivisor() external view returns (uint256);
-}
-
-contract Poof is Ownable {
+contract Poof {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
-  IFeeManager public feeManager;
+  enum Operation { DEPOSIT, WITHDRAW, MINT, BURN }
+
   IERC20 public token;
 
   IVerifier public depositVerifier;
@@ -35,7 +27,6 @@ contract Poof is Ownable {
   bytes32[ACCOUNT_ROOT_HISTORY_SIZE] public accountRoots;
 
   event NewAccount(bytes32 commitment, bytes32 nullifier, bytes encryptedAccount, uint256 index);
-  event VerifiersUpdated(address deposit, address withdraw, address treeUpdate);
 
   struct TreeUpdateArgs {
     bytes32 oldRoot;
@@ -54,6 +45,7 @@ contract Poof is Ownable {
 
   struct DepositExtData {
     bytes encryptedAccount;
+    Operation operation;
   }
 
   struct DepositArgs {
@@ -82,6 +74,7 @@ contract Poof is Ownable {
     address recipient;
     address relayer;
     bytes encryptedAccount;
+    Operation operation;
   }
 
   struct WithdrawArgs {
@@ -93,19 +86,14 @@ contract Poof is Ownable {
 
   constructor(
     IERC20 _token,
-    IFeeManager _feeManager,
-    address[3] memory _verifiers,
+    IVerifier[3] memory _verifiers,
     bytes32 _accountRoot
   ) {
     token = _token;
-    feeManager = _feeManager;
     accountRoots[0] = _accountRoot;
-    // prettier-ignore
-    _setVerifiers([
-      IVerifier(_verifiers[0]),
-      IVerifier(_verifiers[1]),
-      IVerifier(_verifiers[2])
-    ]);
+    depositVerifier = _verifiers[0];
+    withdrawVerifier = _verifiers[1];
+    treeUpdateVerifier = _verifiers[2];
   }
 
   function toDynamicArray(uint256[4] memory arr) internal pure returns (uint256[] memory) {
@@ -136,6 +124,8 @@ contract Poof is Ownable {
   ) public {
     require(_fromArgs.amount - _fromArgs.extData.fee == _toArgs.amount, "Transfer is unfair");
     require(_fromArgs.extData.depositProofHash == keccak248(abi.encode(_toProof)), "'from' proof hash does not match 'to' proof hash");
+    // Check operation here to ensure that the proof is not used for burning
+    require(_toArgs.extData.operation == Operation.DEPOSIT, "Incorrect operation");
 
     // Validate and update the `to` account
     validateAccountUpdate(_toArgs.account, _toTreeUpdateProof, _toTreeUpdateArgs);
@@ -200,19 +190,14 @@ contract Poof is Ownable {
     );
   }
 
-  function deposit(bytes memory _proof, DepositArgs memory _args) public {
-    deposit(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
-  }
-
-  function deposit(
+  function beforeDeposit(
     bytes memory _proof,
     DepositArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
-  ) public {
+  ) internal {
     validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
-    token.safeTransferFrom(msg.sender, address(this), _args.amount);
     require(
       depositVerifier.verifyProof(
         _proof,
@@ -240,19 +225,32 @@ contract Poof is Ownable {
     );
   }
 
-  function withdraw(bytes memory _proof, WithdrawArgs memory _args) public {
-    withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function deposit(bytes memory _proof, DepositArgs memory _args) public virtual {
+    // Check operation here to ensure that the proof is not used for burning
+    require(_args.extData.operation == Operation.DEPOSIT, "Incorrect operation");
+    deposit(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
-  function withdraw(
+  function deposit(
+    bytes memory _proof,
+    DepositArgs memory _args,
+    bytes memory _treeUpdateProof,
+    TreeUpdateArgs memory _treeUpdateArgs
+  ) public virtual {
+    beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    token.safeTransferFrom(msg.sender, address(this), _args.amount);
+  }
+
+  function beforeWithdraw(
     bytes memory _proof,
     WithdrawArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
-  ) public {
+  ) internal {
     validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
     require(_args.amount < 2**248, "Amount value out of range");
+    require(_args.amount >= _args.extData.fee, "Amount should be >= than fee");
     require(
       withdrawVerifier.verifyProof(
         _proof,
@@ -269,22 +267,6 @@ contract Poof is Ownable {
       "Invalid withdrawal proof"
     );
 
-    address feeTo = feeManager.feeTo();
-    uint256 protocolFeeDivisor = feeManager.protocolFeeDivisor();
-
-    bool feeOn = feeTo != address(0) && protocolFeeDivisor != 0;
-    uint256 protocolFee = feeOn ? _args.amount.div(protocolFeeDivisor) : 0;
-    uint256 amount = _args.amount.sub(_args.extData.fee.add(protocolFee), "Amount should be greater than fee");
-    if (amount > 0) {
-      token.transfer(_args.extData.recipient, amount);
-    }
-    if (_args.extData.fee > 0) {
-      token.transfer(_args.extData.relayer, _args.extData.fee);
-    }
-    if (feeOn) {
-      token.transfer(feeTo, protocolFee);
-    }
-
     insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);
     accountNullifiers[_args.account.inputNullifierHash] = true;
 
@@ -296,12 +278,26 @@ contract Poof is Ownable {
     );
   }
 
-  function setVerifiers(IVerifier[3] calldata _verifiers) external onlyOwner {
-    _setVerifiers(_verifiers);
+  function withdraw(bytes memory _proof, WithdrawArgs memory _args) public virtual {
+    // Check operation here to ensure that the proof is not used for minting
+    require(_args.extData.operation == Operation.WITHDRAW, "Incorrect operation");
+    withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
-  function setFeeManager(IFeeManager _feeManager) external onlyOwner {
-    feeManager = _feeManager;
+  function withdraw(
+    bytes memory _proof,
+    WithdrawArgs memory _args,
+    bytes memory _treeUpdateProof,
+    TreeUpdateArgs memory _treeUpdateArgs
+  ) public virtual {
+    beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
+    if (amount > 0) {
+      token.transfer(_args.extData.recipient, amount);
+    }
+    if (_args.extData.fee > 0) {
+      token.transfer(_args.extData.relayer, _args.extData.fee);
+    }
   }
 
   // ------VIEW-------
@@ -363,12 +359,5 @@ contract Poof is Ownable {
 
   function insertAccountRoot(bytes32 _root) internal {
     accountRoots[++accountCount % ACCOUNT_ROOT_HISTORY_SIZE] = _root;
-  }
-
-  function _setVerifiers(IVerifier[3] memory _verifiers) internal {
-    depositVerifier = _verifiers[0];
-    withdrawVerifier = _verifiers[1];
-    treeUpdateVerifier = _verifiers[2];
-    emit VerifiersUpdated(address(_verifiers[0]), address(_verifiers[1]), address(_verifiers[2]));
   }
 }
