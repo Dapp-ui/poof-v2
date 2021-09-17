@@ -22,7 +22,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('0.5', 'gwei'),
     },
-    mainnet: {
+    cmainnet: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
@@ -31,6 +31,56 @@ module.exports = {
       network_id: 42220,
       gas: 6000000,
       gasPrice: toWei('0.1', 'gwei'),
+    },
+    emainnet: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+        }),
+      network_id: 42220,
+      gas: 6000000,
+      gasPrice: toWei('0.1', 'gwei'),
+    },
+    emainnet: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+        }),
+      network_id: 1,
+      gas: 6000000,
+      gasPrice: toWei('100', 'gwei'),
+    },
+    goerli: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+        }),
+      network_id: 5,
+      gas: 6000000,
+      gasPrice: toWei('100', 'gwei'),
+    },
+    amainnet: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://api.avax.network/ext/bc/C/rpc`,
+        }),
+      network_id: 43114,
+      gas: 6000000,
+      gasPrice: toWei('100', 'gwei'),
+    },
+    fuji: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://api.avax-test.network/ext/bc/C/rpc`,
+        }),
+      network_id: 43113,
+      gas: 6000000,
+      gasPrice: toWei('100', 'gwei'),
     },
   },
 

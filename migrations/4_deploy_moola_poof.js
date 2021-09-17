@@ -15,37 +15,39 @@ const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
   hashFunction: poseidonHash2,
 })
 
-module.exports = function (deployer) {
+module.exports = function (deployer, network) {
   return deployer.then(async () => {
-    const depositVerifier = await DepositVerifier.deployed()
-    const withdrawVerifier = await WithdrawVerifier.deployed()
-    const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
-    const usd = await wmcUSD.deployed()
-    const eur = await wmcEUR.deployed()
+    if (['cmainnet', 'alfajores'].includes(network)) {
+      const depositVerifier = await DepositVerifier.deployed()
+      const withdrawVerifier = await WithdrawVerifier.deployed()
+      const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
+      const usd = await wmcUSD.deployed()
+      const eur = await wmcEUR.deployed()
 
-    await deployer.deploy(
-      PoofMintableLendable,
-      'Poof Interest Bearing USD',
-      'pUSD',
-      usd.address,
-      [
-        depositVerifier.address,
-        withdrawVerifier.address,
-        treeUpdateVerifier.address,
-      ],
-      toFixedHex(emptyTree.root()),
-    )
-    await deployer.deploy(
-      PoofMintableLendable,
-      'Poof Interest Bearing EUR',
-      'pEUR',
-      eur.address,
-      [
-        depositVerifier.address,
-        withdrawVerifier.address,
-        treeUpdateVerifier.address,
-      ],
-      toFixedHex(emptyTree.root()),
-    )
+      await deployer.deploy(
+        PoofMintableLendable,
+        'Poof Interest Bearing USD',
+        'pUSD',
+        usd.address,
+        [
+          depositVerifier.address,
+          withdrawVerifier.address,
+          treeUpdateVerifier.address,
+        ],
+        toFixedHex(emptyTree.root()),
+      )
+      await deployer.deploy(
+        PoofMintableLendable,
+        'Poof Interest Bearing EUR',
+        'pEUR',
+        eur.address,
+        [
+          depositVerifier.address,
+          withdrawVerifier.address,
+          treeUpdateVerifier.address,
+        ],
+        toFixedHex(emptyTree.root()),
+      )
+    }
   })
 }
