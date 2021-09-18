@@ -37,16 +37,6 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     lendingPool = ILendingPool(_lendingPool);
   }
 
-  modifier takeFee() {
-    uint256 fee = pendingFee();
-    if (fee > 0) {
-      mToken.redeem(fee);
-      token.safeTransfer(feeTo, fee);
-      lastMBalance = mToken.balanceOf(address(this));
-    }
-    _;
-  }
-
   function pendingFee() public view returns (uint256) {
     if (hasFee()) {
       // Invariant: feeDivisor > 0
@@ -74,7 +64,16 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     return underlyingAmount.mul(totalSupply()).div(totalUnderlyingSupply);
   }
 
-  function wrap(uint256 underlyingAmount) public takeFee override {
+  function takeFee() external {
+    uint256 fee = pendingFee();
+    if (fee > 0) {
+      mToken.redeem(fee);
+      token.safeTransfer(feeTo, fee);
+      lastMBalance = mToken.balanceOf(address(this));
+    }
+  }
+
+  function wrap(uint256 underlyingAmount) external override {
     require(underlyingAmount > 0, "underlyingAmount cannot be 0");
     uint256 toMint = underlyingToDebt(underlyingAmount);
     token.safeTransferFrom(msg.sender, address(this), underlyingAmount);
@@ -86,7 +85,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     lastMBalance = mToken.balanceOf(address(this));
   }
 
-  function unwrap(uint256 debtAmount) public takeFee override {
+  function unwrap(uint256 debtAmount) external override {
     require(debtAmount > 0, "debtAmount cannot be 0");
     uint256 toReturn = debtToUnderlying(debtAmount);
     _burn(msg.sender, debtAmount);

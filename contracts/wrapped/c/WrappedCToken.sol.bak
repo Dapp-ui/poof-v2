@@ -37,20 +37,6 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
     token = IERC20(ISafeBox(_safeBox).uToken());
   }
 
-  modifier takeFee() {
-    if (hasFee()) {
-      // Invariant: feeDivisor > 0 && feeTo != address(0)
-      uint256 currentUnderlyingBalance = safeBox.balanceOfUnderlying(address(this));
-      if (currentUnderlyingBalance > lastUnderlyingBalance) {
-        uint256 fee = currentUnderlyingBalance.sub(lastUnderlyingBalance).div(feeDivisor);
-        cToken.approve(address(safeBox), fee);
-        safeBox.withdraw(fee);
-        token.safeTransfer(feeTo, fee);
-      }
-    }
-    _;
-  }
-
   function debtToUnderlying(uint256 debtAmount) public view override returns (uint256) {
     return debtAmount.div(cToken.exchangeRateStored());
   }
@@ -59,8 +45,30 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
     return underlyingAmount.mul(cToken.exchangeRateStored());
   }
 
-  function wrap(uint256 underlyingAmount) public takeFee override {
+  function pendingFee() public view returns (uint256) {
+    if (hasFee()) {
+      // Invariant: feeDivisor > 0 && feeTo != address(0)
+      uint256 currentUnderlyingBalance = safeBox.balanceOfUnderlying(address(this));
+      if (currentUnderlyingBalance > lastUnderlyingBalance) {
+        return currentUnderlyingBalance.sub(lastUnderlyingBalance).div(feeDivisor);
+      }
+    }
+    return 0;
+  }
+
+  function takeFee() public {
+    uint256 fee = pendingFee();
+    if (fee > 0) {
+      cToken.approve(address(safeBox), fee);
+      safeBox.withdraw(fee);
+      token.safeTransfer(feeTo, fee);
+      lastUnderlyingBalance = safeBox.balanceOfUnderlying(address(this));
+    }
+  }
+
+  function wrap(uint256 underlyingAmount) external override {
     require(underlyingAmount > 0, "underlyingAmount cannot be 0");
+    takeFee();
     uint256 toMint = underlyingToDebt(underlyingAmount);
     token.safeTransferFrom(msg.sender, address(this), underlyingAmount);
     token.approve(address(safeBox), underlyingAmount);
@@ -71,8 +79,9 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
     lastUnderlyingBalance = safeBox.balanceOfUnderlying(address(this));
   }
 
-  function unwrap(uint256 debtAmount) public takeFee override {
+  function unwrap(uint256 debtAmount) external override {
     require(debtAmount > 0, "debtAmount cannot be 0");
+    takeFee();
     uint256 toReturn = debtToUnderlying(debtAmount);
     _burn(msg.sender, debtAmount);
     cToken.approve(address(safeBox), toReturn);

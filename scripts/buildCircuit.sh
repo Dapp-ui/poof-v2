@@ -16,5 +16,6 @@ if [ ! -f build/circuits/$1.r1cs ]; then
   yarn snarkjs zkey export solidityverifier build/circuits/$1_circuit_final.zkey build/circuits/${1}Verifier.sol
   sed -i.bak "s/contract PlonkVerifier/contract ${1}Verifier/g" build/circuits/${1}Verifier.sol
   sed -i.bak "s/uint16 constant n /uint32 constant n /g" build/circuits/${1}Verifier.sol
+  sed -i.bak "s/public/external/g" build/circuits/${1}Verifier.sol
 fi
 

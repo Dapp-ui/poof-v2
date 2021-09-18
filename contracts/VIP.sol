@@ -9,12 +9,12 @@ contract VIP {
     invited[msg.sender] = true;
   }
 
-  function invite(address _guest) public {
+  function invite(address _guest) external {
     require(invited[msg.sender], "Uninvited guest inviting another uninvited guest");
     invited[_guest] = true;
   }
 
-  function batchInvite(address[] memory _guests) public {
+  function batchInvite(address[] memory _guests) external {
     require(invited[msg.sender], "Uninvited guest inviting another uninvited guest");
     for (uint i = 0; i < _guests.length; i++) {
       invited[_guests[i]] = true;

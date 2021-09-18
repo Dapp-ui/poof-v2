@@ -19,13 +19,13 @@ contract WERC20Mock is ERC20, IWERC20 {
     token = _token;
   }
 
-  function wrap(uint256 underlyingAmount) public override {
+  function wrap(uint256 underlyingAmount) external override {
     uint256 debtAmount = underlyingToDebt(underlyingAmount);
     token.safeTransferFrom(msg.sender, address(this), underlyingAmount);
     _mint(msg.sender, debtAmount);
   }
 
-  function unwrap(uint256 debtAmount) public override {
+  function unwrap(uint256 debtAmount) external override {
     require(balanceOf(msg.sender) >= debtAmount, "Insufficient funds for unwrap");
     uint256 underlyingAmount = debtToUnderlying(debtAmount);
     _burn(msg.sender, debtAmount);

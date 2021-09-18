@@ -121,7 +121,7 @@ contract Poof {
     TreeUpdateArgs memory _fromTreeUpdateArgs,
     bytes memory _toTreeUpdateProof,
     TreeUpdateArgs memory _toTreeUpdateArgs
-  ) public {
+  ) external {
     require(_fromArgs.amount - _fromArgs.extData.fee == _toArgs.amount, "Transfer is unfair");
     require(_fromArgs.extData.depositProofHash == keccak248(abi.encode(_toProof)), "'from' proof hash does not match 'to' proof hash");
     // Check operation here to ensure that the proof is not used for burning
@@ -176,7 +176,7 @@ contract Poof {
     );
 
     if (_fromArgs.extData.fee > 0) {
-      token.transfer(_fromArgs.extData.relayer, _fromArgs.extData.fee);
+      token.safeTransfer(_fromArgs.extData.relayer, _fromArgs.extData.fee);
     }
 
     accountNullifiers[_fromArgs.account.inputNullifierHash] = true;
@@ -225,9 +225,7 @@ contract Poof {
     );
   }
 
-  function deposit(bytes memory _proof, DepositArgs memory _args) public virtual {
-    // Check operation here to ensure that the proof is not used for burning
-    require(_args.extData.operation == Operation.DEPOSIT, "Incorrect operation");
+  function deposit(bytes memory _proof, DepositArgs memory _args) external virtual {
     deposit(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -237,6 +235,8 @@ contract Poof {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public virtual {
+    // Check operation here to ensure that the proof is not used for burning
+    require(_args.extData.operation == Operation.DEPOSIT, "Incorrect operation");
     beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     token.safeTransferFrom(msg.sender, address(this), _args.amount);
   }
@@ -278,9 +278,7 @@ contract Poof {
     );
   }
 
-  function withdraw(bytes memory _proof, WithdrawArgs memory _args) public virtual {
-    // Check operation here to ensure that the proof is not used for minting
-    require(_args.extData.operation == Operation.WITHDRAW, "Incorrect operation");
+  function withdraw(bytes memory _proof, WithdrawArgs memory _args) external virtual {
     withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -290,13 +288,15 @@ contract Poof {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public virtual {
+    // Check operation here to ensure that the proof is not used for minting
+    require(_args.extData.operation == Operation.WITHDRAW, "Incorrect operation");
     beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
     if (amount > 0) {
-      token.transfer(_args.extData.recipient, amount);
+      token.safeTransfer(_args.extData.recipient, amount);
     }
     if (_args.extData.fee > 0) {
-      token.transfer(_args.extData.relayer, _args.extData.fee);
+      token.safeTransfer(_args.extData.relayer, _args.extData.fee);
     }
   }
 
