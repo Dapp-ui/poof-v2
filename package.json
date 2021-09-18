@@ -12,18 +12,15 @@
   ],
   "scripts": {
     "compile": "hardhat compile",
-    "coverage": "yarn compile && truffle run coverage",
     "test": "hardhat test",
-    "test:stacktrace": "yarn test --stacktrace",
-    "eslint": "eslint --ext .js --ignore-path .gitignore .",
     "prettier:check": "prettier --check . --config .prettierrc",
     "prettier:fix": "prettier --write . --config .prettierrc",
-    "lint": "yarn eslint && yarn prettier:check",
     "circuit:deposit": "scripts/buildCircuit.sh Deposit",
     "circuit:withdraw": "scripts/buildCircuit.sh Withdraw",
     "circuit:treeUpdate": "scripts/buildCircuit.sh TreeUpdate",
     "circuit": "mkdir -p build/circuits && yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:treeUpdate",
-    "slither": "slither ."
+    "slither": "slither .",
+    "postinstall": "yarn circuit"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
