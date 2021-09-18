@@ -28,6 +28,8 @@ contract PoofLendable is Poof {
   }
 
   function deposit(bytes memory _proof, DepositArgs memory _args) public override {
+    // Check operation here to ensure that the proof is not used for burning
+    require(_args.extData.operation == Operation.DEPOSIT, "Incorrect operation");
     deposit(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -45,6 +47,8 @@ contract PoofLendable is Poof {
   }
 
   function withdraw(bytes memory _proof, WithdrawArgs memory _args) public override {
+    // Check operation here to ensure that the proof is not used for minting
+    require(_args.extData.operation == Operation.WITHDRAW, "Incorrect operation");
     withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -55,6 +59,7 @@ contract PoofLendable is Poof {
     TreeUpdateArgs memory _treeUpdateArgs
   ) public override {
     beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    require(_args.amount >= _args.extData.fee, "Fee cannot be greater than amount");
     uint256 underlyingAmount = debtToken.debtToUnderlying(_args.amount.sub(_args.extData.fee));
     uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);
     debtToken.unwrap(_args.amount);

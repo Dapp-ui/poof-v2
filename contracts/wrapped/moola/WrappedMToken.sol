@@ -38,16 +38,24 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
   }
 
   modifier takeFee() {
-    if (hasFee()) {
-      // Invariant: feeDivisor > 0 && feeTo != address(0)
-      uint256 currentMBalance = mToken.balanceOf(address(this));
-      if (currentMBalance > lastMBalance) {
-        uint256 fee = currentMBalance.sub(lastMBalance).div(feeDivisor);
-        mToken.redeem(fee);
-        token.safeTransfer(feeTo, fee);
-      }
+    uint256 fee = pendingFee();
+    if (fee > 0) {
+      mToken.redeem(fee);
+      token.safeTransfer(feeTo, fee);
+      lastMBalance = mToken.balanceOf(address(this));
     }
     _;
+  }
+
+  function pendingFee() public view returns (uint256) {
+    if (hasFee()) {
+      // Invariant: feeDivisor > 0
+      uint256 currentMBalance = mToken.balanceOf(address(this));
+      if (currentMBalance > lastMBalance) {
+        return currentMBalance.sub(lastMBalance).div(feeDivisor);
+      }
+    }
+    return 0;
   }
 
   function debtToUnderlying(uint256 debtAmount) public view override returns (uint256) {
@@ -55,11 +63,11 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     if (totalDebtSupply == 0) {
       return debtAmount.div(MULTIPLIER);
     }
-    return debtAmount.mul(mToken.balanceOf(address(this))).div(totalDebtSupply);
+    return debtAmount.mul(mToken.balanceOf(address(this)).sub(pendingFee())).div(totalDebtSupply);
   }
 
   function underlyingToDebt(uint256 underlyingAmount) public view override returns (uint256) {
-    uint256 totalUnderlyingSupply = mToken.balanceOf(address(this));
+    uint256 totalUnderlyingSupply = mToken.balanceOf(address(this)).sub(pendingFee());
     if (totalUnderlyingSupply == 0) {
       return underlyingAmount.mul(MULTIPLIER);
     }

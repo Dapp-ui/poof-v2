@@ -24,6 +24,8 @@ contract PoofMintableLendable is PoofLendable, ERC20 {
   ) ERC20(_tokenName, _tokenSymbol) PoofLendable(_debtToken, _verifiers, _accountRoot) {}
 
   function burn(bytes memory _proof, DepositArgs memory _args) public {
+    // Check operation here to ensure that the proof is not used for depositing
+    require(_args.extData.operation == Operation.BURN, "Incorrect operation");
     burn(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -38,6 +40,8 @@ contract PoofMintableLendable is PoofLendable, ERC20 {
   }
 
   function mint(bytes memory _proof, WithdrawArgs memory _args) public {
+    // Check operation here to ensure that the proof is not used for withdrawing
+    require(_args.extData.operation == Operation.MINT, "Incorrect operation");
     mint(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 

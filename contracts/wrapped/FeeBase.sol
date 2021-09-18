@@ -3,15 +3,15 @@
 pragma solidity ^0.8.0;
 
 contract FeeBase {
-  address feeToSetter;
-  address feeTo;
-  uint256 feeDivisor;
+  address public feeToSetter;
+  address public feeTo;
+  uint256 public feeDivisor;
 
   constructor(address _feeToSetter) {
     // Initialize with a 1% fee to the feeToSetter
     feeToSetter = _feeToSetter;
     feeTo = _feeToSetter;
-    feeDivisor = 100;
+    feeDivisor = 10;
   }
 
   function setFeeToSetter(address nextFeeToSetter) external {

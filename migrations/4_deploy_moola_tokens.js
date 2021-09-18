@@ -1,5 +1,6 @@
 require('dotenv').config()
 
+const wmCELO = artifacts.require('wmCELO')
 const wmcUSD = artifacts.require('wmcUSD')
 const wmcEUR = artifacts.require('wmcEUR')
 

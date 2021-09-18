@@ -30,6 +30,13 @@ contract('WrappedMToken', (accounts) => {
     await token.approve(wToken.address, 10000)
   })
 
+  describe('#pendingFee', () => {
+    it('should start at 0', async () => {
+      const pendingFee = await wToken.pendingFee()
+      pendingFee.should.be.eq.BN(0)
+    })
+  })
+
   describe('#debtToUnderlying', () => {
     it('should work', async () => {
       let underlyingAmount = await wToken.debtToUnderlying(0)
@@ -67,10 +74,32 @@ contract('WrappedMToken', (accounts) => {
   })
 
   describe('#wrap', () => {
+    it('should deposit correctly given a debtAmount', async () => {
+      const debtAmount = toBN(toWei('100'))
+      const underlyingAmount = await wToken.debtToUnderlying(debtAmount)
+
+      const balanceBefore1 = await token.balanceOf(sender)
+      const wBalanceBefore1 = await wToken.balanceOf(sender)
+      await wToken.wrap(underlyingAmount)
+      const balanceAfter1 = await token.balanceOf(sender)
+      const wBalanceAfter1 = await wToken.balanceOf(sender)
+
+      balanceBefore1.should.be.eq.BN(balanceAfter1.add(underlyingAmount))
+      wBalanceAfter1.should.be.eq.BN(
+        wBalanceBefore1.add(toWei(underlyingAmount)),
+      )
+
+      // reset
+      await wToken.unwrap(debtAmount)
+    })
+
     it('should work', async () => {
       await wToken
         .wrap(0)
         .should.be.rejectedWith('underlyingAmount cannot be 0')
+
+      const underlyingBefore = await wToken.debtToUnderlying(toWei('100'))
+      const debtBefore = await wToken.underlyingToDebt(100)
 
       const amount1 = toBN(500)
       const balanceBefore1 = await token.balanceOf(sender)
@@ -91,6 +120,18 @@ contract('WrappedMToken', (accounts) => {
 
       balanceBefore2.should.be.eq.BN(balanceAfter2.add(amount2))
       wBalanceAfter2.should.be.eq.BN(wBalanceBefore2.add(toWei(amount2)))
+
+      // Rates should not have changed after wrapping
+      const underlyingAfter = await wToken.debtToUnderlying(toWei('100'))
+      const debtAfter = await wToken.underlyingToDebt(100)
+
+      underlyingAfter.should.be.eq.BN(underlyingBefore)
+      debtAfter.should.be.eq.BN(debtBefore)
+    })
+
+    it('should keep pendingFee at 0', async () => {
+      const pendingFee = await wToken.pendingFee()
+      pendingFee.should.be.eq.BN(0)
     })
   })
 
@@ -101,17 +142,26 @@ contract('WrappedMToken', (accounts) => {
       await lendingPool.deposit(token.address, 1500, 0)
       await lendingPool.transfer(wToken.address, 1500)
 
-      const underlyingAmount = await wToken.debtToUnderlying(toWei('1'))
-      underlyingAmount.should.be.eq.BN(2)
+      const underlyingAmount = await wToken.debtToUnderlying(toWei('100'))
+      underlyingAmount.should.be.eq.BN(190)
 
-      const debtAmount = await wToken.underlyingToDebt(2)
-      debtAmount.should.be.eq.BN(toWei('1'))
+      const debtAmount = await wToken.underlyingToDebt(190)
+      debtAmount.should.be.eq.BN(toWei('100'))
+    })
+
+    it('should increase pendingFee', async () => {
+      const pendingFee = await wToken.pendingFee()
+      // Initial fee is 10% so we take 10% of the gains
+      pendingFee.should.be.eq.BN(toBN(1500).div(toBN(10)))
     })
   })
 
   describe('#unwrap', () => {
     it('should work', async () => {
       await wToken.unwrap(0).should.be.rejectedWith('debtAmount cannot be 0')
+
+      const underlyingBefore = await wToken.debtToUnderlying(toWei('100'))
+      const debtBefore = await wToken.underlyingToDebt(100)
 
       const amount1 = toBN(toWei('500'))
       const balanceBefore1 = await token.balanceOf(sender)
@@ -120,13 +170,20 @@ contract('WrappedMToken', (accounts) => {
       const balanceAfter1 = await token.balanceOf(sender)
       const wBalanceAfter1 = await wToken.balanceOf(sender)
 
-      // Should receive 200% - 1% return
+      // Should receive 200% - 10% return
       balanceAfter1.should.be.eq.BN(
         balanceBefore1.add(
-          toBN(fromWei(amount1.mul(toBN(199)).div(toBN(100)))),
+          toBN(fromWei(amount1.mul(toBN(190)).div(toBN(100)))),
         ),
       )
       wBalanceBefore1.should.be.eq.BN(wBalanceAfter1.add(amount1))
+
+      // Rates should not have changed after unwrapping
+      const underlyingAfter = await wToken.debtToUnderlying(toWei('100'))
+      const debtAfter = await wToken.underlyingToDebt(100)
+
+      underlyingAfter.should.be.eq.BN(underlyingBefore)
+      debtAfter.should.be.eq.BN(debtBefore)
 
       const amount2 = toBN(toWei('1000'))
       const balanceBefore2 = await token.balanceOf(sender)
@@ -138,10 +195,13 @@ contract('WrappedMToken', (accounts) => {
       // Should receive 200% - 1% return
       balanceAfter2.should.be.eq.BN(
         balanceBefore2.add(
-          toBN(fromWei(amount2.mul(toBN(199)).div(toBN(100)))),
+          toBN(fromWei(amount2.mul(toBN(190)).div(toBN(100)))),
         ),
       )
       wBalanceBefore2.should.be.eq.BN(wBalanceAfter2.add(amount2))
+
+      const feeToBalance = await token.balanceOf(feeToSetter)
+      feeToBalance.should.be.eq.BN(150)
     })
   })
 })

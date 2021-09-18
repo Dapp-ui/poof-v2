@@ -5,8 +5,9 @@ const MerkleTree = require('fixed-merkle-tree')
 const DepositVerifier = artifacts.require('DepositVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawVerifier')
 const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
-const wmcUSD = artifacts.require('wmcUSD')
-const wmcEUR = artifacts.require('wmcEUR')
+const WMCELO = artifacts.require('wmCELO')
+const WMCUSD = artifacts.require('wmcUSD')
+const WMCEUR = artifacts.require('wmcEUR')
 const PoofMintableLendable = artifacts.require('PoofMintableLendable')
 
 const { toFixedHex, poseidonHash2 } = require('../src/utils')
@@ -21,14 +22,27 @@ module.exports = function (deployer, network) {
       const depositVerifier = await DepositVerifier.deployed()
       const withdrawVerifier = await WithdrawVerifier.deployed()
       const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
-      const usd = await wmcUSD.deployed()
-      const eur = await wmcEUR.deployed()
+      const wmCELO = await WMCELO.deployed()
+      const wmcUSD = await WMCUSD.deployed()
+      const wmcEUR = await WMCEUR.deployed()
 
+      await deployer.deploy(
+        PoofMintableLendable,
+        'Poof Interest Bearing CELO',
+        'pCELO',
+        wmCELO.address,
+        [
+          depositVerifier.address,
+          withdrawVerifier.address,
+          treeUpdateVerifier.address,
+        ],
+        toFixedHex(emptyTree.root()),
+      )
       await deployer.deploy(
         PoofMintableLendable,
         'Poof Interest Bearing USD',
         'pUSD',
-        usd.address,
+        wmcUSD.address,
         [
           depositVerifier.address,
           withdrawVerifier.address,
@@ -40,7 +54,7 @@ module.exports = function (deployer, network) {
         PoofMintableLendable,
         'Poof Interest Bearing EUR',
         'pEUR',
-        eur.address,
+        wmcEUR.address,
         [
           depositVerifier.address,
           withdrawVerifier.address,
