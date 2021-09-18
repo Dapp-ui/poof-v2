@@ -22,7 +22,8 @@
     "circuit:deposit": "scripts/buildCircuit.sh Deposit",
     "circuit:withdraw": "scripts/buildCircuit.sh Withdraw",
     "circuit:treeUpdate": "scripts/buildCircuit.sh TreeUpdate",
-    "circuit": "mkdir -p build/circuits && yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:treeUpdate"
+    "circuit": "mkdir -p build/circuits && yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:treeUpdate",
+    "slither": "slither ."
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
