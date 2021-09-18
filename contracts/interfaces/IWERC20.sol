@@ -14,5 +14,7 @@ interface IWERC20 is IERC20 {
   function debtToUnderlying(uint256 debtAmount) external view returns (uint256);
 
   function underlyingToken() external view returns (address);
+
+  function underlyingBalanceOf(address owner) external view returns (uint256);
 }
 

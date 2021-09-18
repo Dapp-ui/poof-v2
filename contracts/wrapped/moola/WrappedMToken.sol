@@ -100,4 +100,8 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
   function underlyingToken() external override view returns (address) {
     return address(token);
   }
+
+  function underlyingBalanceOf(address owner) external view override returns (uint256) {
+    return debtToUnderlying(balanceOf(owner));
+  }
 }

@@ -60,5 +60,10 @@ contract PoofMintableLendable is PoofLendable, ERC20 {
       token.transfer(_args.extData.relayer, _args.extData.fee);
     }
   }
+
+  function underlyingBalanceOf(address owner) public view returns (uint256) {
+    uint256 balanceOf = balanceOf(owner);
+    return debtToken.debtToUnderlying(balanceOf);
+  }
 }
 

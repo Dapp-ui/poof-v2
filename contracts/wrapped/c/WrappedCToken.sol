@@ -13,6 +13,7 @@ import "../../interfaces/IWERC20.sol";
 import "../../interfaces/ICToken.sol";
 
 // Wrapped cToken for AlphaHomora or Compound
+// TODO: WIP
 contract WrappedCToken is ERC20, FeeBase, IWERC20 {
   using SafeERC20 for IERC20;
   using SafeMath for uint256;
@@ -84,6 +85,10 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
 
   function underlyingToken() external override view returns (address) {
     return address(token);
+  }
+
+  function underlyingBalanceOf(address owner) external view override returns (uint256) {
+    return debtToUnderlying(balanceOf(owner));
   }
 }
 

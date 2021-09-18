@@ -43,5 +43,9 @@ contract WERC20Mock is ERC20, IWERC20 {
   function underlyingToken() external view override returns (address) {
     return address(token);
   }
+
+  function underlyingBalanceOf(address owner) external view override returns (uint256) {
+    return debtToUnderlying(balanceOf(owner));
+  }
 }
 
