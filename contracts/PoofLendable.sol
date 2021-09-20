@@ -42,7 +42,7 @@ contract PoofLendable is Poof {
     beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     uint256 underlyingAmount = debtToken.debtToUnderlying(_args.amount);
     underlyingToken.safeTransferFrom(msg.sender, address(this), underlyingAmount);
-    underlyingToken.approve(address(debtToken), underlyingAmount);
+    require(underlyingToken.approve(address(debtToken), underlyingAmount), "Approve failed");
     debtToken.wrap(underlyingAmount);
   }
 

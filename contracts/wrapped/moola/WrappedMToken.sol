@@ -55,7 +55,8 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
 
   function debtToUnderlying(uint256 debtAmount) public view override returns (uint256) {
     uint256 totalDebtSupply = totalSupply();
-    if (totalDebtSupply == 0) {
+    // slither-disable-next-line incorrect-equality
+    if (totalDebtSupply <= 0) {
       return debtAmount.div(MULTIPLIER);
     }
     return debtAmount.mul(mToken.balanceOf(address(this)).sub(totalFee())).div(totalDebtSupply);
@@ -63,7 +64,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
 
   function underlyingToDebt(uint256 underlyingAmount) public view override returns (uint256) {
     uint256 totalUnderlyingSupply = mToken.balanceOf(address(this)).sub(totalFee());
-    if (totalUnderlyingSupply == 0) {
+    if (totalUnderlyingSupply <= 0) {
       return underlyingAmount.mul(MULTIPLIER);
     }
     return underlyingAmount.mul(totalSupply()).div(totalUnderlyingSupply);
@@ -84,7 +85,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     uint256 toMint = underlyingToDebt(underlyingAmount);
     totalUnredeemedFee = totalUnredeemedFee.add(pendingFee());
     token.safeTransferFrom(msg.sender, address(this), underlyingAmount);
-    token.approve(lendingPool.core(), underlyingAmount);
+    require(token.approve(lendingPool.core(), underlyingAmount), "Approve failed");
     lendingPool.deposit(address(token), underlyingAmount, 88);
     _mint(msg.sender, toMint);
 
