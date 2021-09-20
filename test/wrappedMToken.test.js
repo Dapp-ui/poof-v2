@@ -192,15 +192,25 @@ contract('WrappedMToken', (accounts) => {
       const balanceAfter2 = await token.balanceOf(sender)
       const wBalanceAfter2 = await wToken.balanceOf(sender)
 
-      // Should receive 200% - 1% return
+      // Should receive 200% - 10% return
       balanceAfter2.should.be.eq.BN(
         balanceBefore2.add(
           toBN(fromWei(amount2.mul(toBN(190)).div(toBN(100)))),
         ),
       )
       wBalanceBefore2.should.be.eq.BN(wBalanceAfter2.add(amount2))
+    })
+  })
 
-      const feeToBalance = await token.balanceOf(feeToSetter)
+  describe('#takeFee', () => {
+    it('should work', async () => {
+      await wToken.takeFee()
+      let feeToBalance = await token.balanceOf(feeToSetter)
+      feeToBalance.should.be.eq.BN(150)
+
+      // disallow double claim
+      await wToken.takeFee()
+      feeToBalance = await token.balanceOf(feeToSetter)
       feeToBalance.should.be.eq.BN(150)
     })
   })
