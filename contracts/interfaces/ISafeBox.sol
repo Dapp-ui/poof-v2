@@ -9,8 +9,8 @@ interface ISafeBox {
 
   function balanceOfUnderlying(address owner) external view returns (uint256);
 
-  function deposit (uint256 amount) external;
+  function deposit(uint256 amount) external;
 
-  function withdraw (uint256 amount) external;
+  function withdraw(uint256 amount) external;
 }
 

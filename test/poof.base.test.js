@@ -107,7 +107,7 @@ contract('Poof', (accounts) => {
   })
 
   describe('#deposit', () => {
-    it.skip('should fail if no approval', async () => {
+    it('should fail if no approval', async () => {
       const zeroAccount = new Account()
 
       zeroAccount.amount.should.be.eq.BN(toBN(0))
@@ -169,7 +169,7 @@ contract('Poof', (accounts) => {
       account.amount.should.be.eq.BN(amount)
     })
 
-    it.skip('should send fee to relayer', async () => {
+    it('should send fee to relayer', async () => {
       const amount = toBN(44)
 
       const deposit = await controller.deposit({
@@ -203,7 +203,7 @@ contract('Poof', (accounts) => {
       relayerBalanceAfter.should.be.eq.BN(relayerBalanceBefore.add(fee))
     })
 
-    it.skip('should use fallback with outdated tree', async () => {
+    it('should use fallback with outdated tree', async () => {
       const { proof, args } = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -228,7 +228,7 @@ contract('Poof', (accounts) => {
       rootAfter.should.be.equal(update.args.newRoot)
     })
 
-    it.skip('should reject with incorrect insert position', async () => {
+    it('should reject with incorrect insert position', async () => {
       const tmp = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -266,7 +266,7 @@ contract('Poof', (accounts) => {
       await poof.deposit(proof, args).should.be.fulfilled
     })
 
-    it.skip('should reject with incorrect external data hash', async () => {
+    it('should reject with incorrect external data hash', async () => {
       const { proof, args } = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -287,7 +287,7 @@ contract('Poof', (accounts) => {
       await poof.deposit(proof, args).should.be.fulfilled
     })
 
-    it.skip('should reject for invalid proof', async () => {
+    it('should reject for invalid proof', async () => {
       const claim1 = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -304,7 +304,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Invalid deposit proof')
     })
 
-    it.skip('should reject for invalid account root', async () => {
+    it('should reject for invalid account root', async () => {
       const account1 = new Account()
       const account2 = new Account()
       const account3 = new Account()
@@ -326,7 +326,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Invalid account root')
     })
 
-    it.skip('should reject with outdated account root (treeUpdate proof validation)', async () => {
+    it('should reject with outdated account root (treeUpdate proof validation)', async () => {
       const { proof, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -358,7 +358,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Outdated tree update merkle root')
     })
 
-    it.skip('should reject for incorrect commitment (treeUpdate proof validation)', async () => {
+    it('should reject for incorrect commitment (treeUpdate proof validation)', async () => {
       const claim = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -388,7 +388,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Invalid deposit proof')
     })
 
-    it.skip('should reject for incorrect account insert index (treeUpdate proof validation)', async () => {
+    it('should reject for incorrect account insert index (treeUpdate proof validation)', async () => {
       const { proof, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -417,7 +417,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Incorrect account insert index')
     })
 
-    it.skip('should reject for invalid tree update proof (treeUpdate proof validation)', async () => {
+    it('should reject for invalid tree update proof (treeUpdate proof validation)', async () => {
       const { proof, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -518,7 +518,7 @@ contract('Poof', (accounts) => {
       fromAccountLog.args.index.should.be.eq.BN(2)
     })
 
-    it.skip('should reject for double spend', async () => {
+    it('should reject for double spend', async () => {
       const toAccount = new Account()
       const { proof: toProof, args: toArgs } = await controller.deposit({
         account: toAccount,
@@ -567,7 +567,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Outdated account state')
     })
 
-    it.skip('should reject with incorrect insert position', async () => {
+    it('should reject with incorrect insert position', async () => {
       const toAccount = new Account()
       const { proof: toProof, args: toArgs } = await controller.deposit({
         account: toAccount,
@@ -651,7 +651,7 @@ contract('Poof', (accounts) => {
       )
     })
 
-    it.skip('should reject with incorrect external data hash', async () => {
+    it('should reject with incorrect external data hash', async () => {
       const toAccount = new Account()
       const { proof: toProof, args: toArgs } = await controller.deposit({
         account: toAccount,
@@ -716,7 +716,7 @@ contract('Poof', (accounts) => {
       )
     })
 
-    it.skip('should reject with incorrect "to" params', async () => {
+    it('should reject with incorrect "to" params', async () => {
       const toAccount = new Account()
       const { proof: toProof, args: toArgs } = await controller.deposit({
         account: toAccount,
@@ -814,7 +814,7 @@ contract('Poof', (accounts) => {
       )
     })
 
-    it.skip("should reject for invalid 'from' proof", async () => {
+    it("should reject for invalid 'from' proof", async () => {
       const { proof: toProof1, args: toArgs1 } = await controller.deposit({
         account: new Account(),
         amount,
@@ -857,7 +857,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Invalid deposit proof')
     })
 
-    it.skip('should send fee to relayer', async () => {
+    it('should send fee to relayer', async () => {
       const fee = toBN(3)
 
       const { proof: toProof, args: toArgs } = await controller.deposit({
@@ -960,7 +960,7 @@ contract('Poof', (accounts) => {
       withdrawSnark.account.commitment.should.be.eq.BN(account2.commitment)
     })
 
-    it.skip('should reject for double spend', async () => {
+    it('should reject for double spend', async () => {
       const withdrawSnark = await controller.withdraw({
         account,
         amount,
@@ -977,7 +977,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Outdated account state')
     })
 
-    it.skip('should reject with incorrect insert position', async () => {
+    it('should reject with incorrect insert position', async () => {
       const { proof, args } = await controller.withdraw({
         account,
         amount,
@@ -1008,7 +1008,7 @@ contract('Poof', (accounts) => {
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
     })
 
-    it.skip('should reject with incorrect external data hash', async () => {
+    it('should reject with incorrect external data hash', async () => {
       const { proof, args } = await controller.withdraw({
         account,
         amount,
@@ -1030,7 +1030,7 @@ contract('Poof', (accounts) => {
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
     })
 
-    it.skip('should reject for amount overflow', async () => {
+    it('should reject for amount overflow', async () => {
       const { proof, args } = await controller.withdraw({
         account,
         amount,
@@ -1052,7 +1052,7 @@ contract('Poof', (accounts) => {
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
     })
 
-    it.skip('should reject for fee overflow', async () => {
+    it('should reject for fee overflow', async () => {
       const fee = account.amount.add(toBN(5))
       const fakeAmount = toBN(-5)
       const { proof, args } = await controller.withdraw({
@@ -1067,7 +1067,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Amount should be greater than fee')
     })
 
-    it.skip('should reject for unfair amount', async () => {
+    it('should reject for unfair amount', async () => {
       const fee = toBN(3)
       const amountToWithdraw = amount.sub(fee)
       const { proof, args } = await controller.withdraw({
@@ -1088,7 +1088,7 @@ contract('Poof', (accounts) => {
       balanceAfter.should.be.eq.BN(balanceBefore.add(amountToWithdraw))
     })
 
-    it.skip('can use fallback with outdated tree', async () => {
+    it('can use fallback with outdated tree', async () => {
       const tmpReward = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -1126,7 +1126,7 @@ contract('Poof', (accounts) => {
       rootAfter.should.be.equal(update.args.newRoot)
     })
 
-    it.skip('should reject for invalid proof', async () => {
+    it('should reject for invalid proof', async () => {
       const tmpReward = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -1150,7 +1150,7 @@ contract('Poof', (accounts) => {
         .should.be.rejectedWith('Invalid withdrawal proof')
     })
 
-    it.skip('should reject for malformed relayer and recipient address and fee', async () => {
+    it('should reject for malformed relayer and recipient address and fee', async () => {
       const fakeRelayer = accounts[6]
       const fakeRecipient = accounts[7]
       const fee = toBN(12)
