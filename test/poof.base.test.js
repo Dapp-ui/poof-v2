@@ -1064,7 +1064,7 @@ contract('Poof', (accounts) => {
       })
       await poof
         .withdraw(proof, args)
-        .should.be.rejectedWith('Amount should be greater than fee')
+        .should.be.rejectedWith('Amount should be >= than fee')
     })
 
     it('should reject for unfair amount', async () => {
@@ -1184,6 +1184,7 @@ contract('Poof', (accounts) => {
         recipient: fakeRecipient,
         relayer: fakeRelayer,
         encryptedAccount: malformedArgs.extData.encryptedAccount,
+        operation: 1,
       })
       malformedArgs.extData.fee = fakeFee
       malformedArgs.extData.relayer = fakeRelayer
@@ -1191,7 +1192,7 @@ contract('Poof', (accounts) => {
       malformedArgs.extDataHash = extDataHash
       await poof
         .withdraw(proof, malformedArgs)
-        .should.be.rejectedWith('Invalid withdrawal proof')
+        .should.be.rejectedWith('Amount should be >= than fee')
       await timeReset()
       const balanceBefore = await token.balanceOf(recipient)
       await poof.withdraw(proof, args)
