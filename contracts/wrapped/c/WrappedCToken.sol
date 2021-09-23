@@ -13,7 +13,6 @@ import "../../interfaces/IWERC20.sol";
 import "../../interfaces/ICToken.sol";
 
 // Wrapped cToken for AlphaHomora or Compound
-// TODO: WIP
 contract WrappedCToken is ERC20, FeeBase, IWERC20 {
   using SafeERC20 for IERC20;
   using SafeMath for uint256;
@@ -25,6 +24,7 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
   IERC20 public immutable token;
 
   uint256 public lastUnderlyingBalance;
+  uint256 public totalUnredeemedFee;
 
   constructor(
     string memory _name,
@@ -38,11 +38,21 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
   }
 
   function debtToUnderlying(uint256 debtAmount) public view override returns (uint256) {
-    return debtAmount.div(cToken.exchangeRateStored());
+    uint256 totalDebtSupply = totalSupply();
+    if (totalDebtSupply <= 0) {
+      return debtAmount;
+    }
+    uint256 totalUnderlyingSupply = cToken.balanceOf(address(this)).mul(cToken.exchangeRateStored());
+    return debtAmount.mul(totalUnderlyingSupply.sub(totalFee())).div(totalDebtSupply);
   }
 
   function underlyingToDebt(uint256 underlyingAmount) public view override returns (uint256) {
-    return underlyingAmount.mul(cToken.exchangeRateStored());
+    uint256 totalDebtSupply = totalSupply();
+    uint256 totalUnderlyingSupply = cToken.balanceOf(address(this)).mul(cToken.exchangeRateStored());
+    if (totalUnderlyingSupply <= 0) {
+      return underlyingAmount;
+    }
+    return underlyingAmount.mul(totalDebtSupply).div(totalUnderlyingSupply.sub(totalFee()));
   }
 
   function pendingFee() public view returns (uint256) {
@@ -56,19 +66,24 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
     return 0;
   }
 
-  function takeFee() public {
-    uint256 fee = pendingFee();
+  function totalFee() public view returns (uint256) {
+    return pendingFee().add(totalUnredeemedFee);
+  }
+
+  function takeFee() external {
+    uint256 fee = totalFee();
+    uint256 feeInDebt = fee.div(cToken.exchangeRateStored());
     if (fee > 0) {
-      cToken.approve(address(safeBox), fee);
-      safeBox.withdraw(fee);
+      cToken.approve(address(safeBox), feeInDebt);
+      safeBox.withdraw(feeInDebt);
       token.safeTransfer(feeTo, fee);
       lastUnderlyingBalance = safeBox.balanceOfUnderlying(address(this));
+      totalUnredeemedFee = 0;
     }
   }
 
   function wrap(uint256 underlyingAmount) external override {
     require(underlyingAmount > 0, "underlyingAmount cannot be 0");
-    takeFee();
     uint256 toMint = underlyingToDebt(underlyingAmount);
     token.safeTransferFrom(msg.sender, address(this), underlyingAmount);
     token.approve(address(safeBox), underlyingAmount);
@@ -81,11 +96,11 @@ contract WrappedCToken is ERC20, FeeBase, IWERC20 {
 
   function unwrap(uint256 debtAmount) external override {
     require(debtAmount > 0, "debtAmount cannot be 0");
-    takeFee();
     uint256 toReturn = debtToUnderlying(debtAmount);
+    totalUnredeemedFee = totalUnredeemedFee.add(pendingFee());
     _burn(msg.sender, debtAmount);
     cToken.approve(address(safeBox), toReturn);
-    safeBox.withdraw(toReturn);
+    safeBox.withdraw(toReturn.div(cToken.exchangeRateStored()));
     token.safeTransfer(msg.sender, toReturn);
 
     // Assign lastUnderlyingBalance after we have unwrapped

@@ -55,7 +55,6 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
 
   function debtToUnderlying(uint256 debtAmount) public view override returns (uint256) {
     uint256 totalDebtSupply = totalSupply();
-    // slither-disable-next-line incorrect-equality
     if (totalDebtSupply <= 0) {
       return debtAmount.div(MULTIPLIER);
     }
