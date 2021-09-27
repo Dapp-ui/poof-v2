@@ -42,23 +42,13 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('0.1', 'gwei'),
     },
-    emainnet: {
+    kovan: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
-          providerOrUrl: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+          providerOrUrl: `https://kovan.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
         }),
-      network_id: 1,
-      gas: 6000000,
-      gasPrice: toWei('100', 'gwei'),
-    },
-    goerli: {
-      provider: () =>
-        new HDWalletProvider({
-          privateKeys: [process.env.PRIVATE_KEY],
-          providerOrUrl: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
-        }),
-      network_id: 5,
+      network_id: 42,
       gas: 6000000,
       gasPrice: toWei('100', 'gwei'),
     },

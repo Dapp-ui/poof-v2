@@ -22,9 +22,9 @@ const {
 const { getEncryptionPublicKey } = require('eth-sig-util')
 const ERC20Mock = artifacts.require('ERC20Mock')
 const Poof = artifacts.require('Poof')
-const DepositVerifier = artifacts.require('DepositVerifier')
-const WithdrawVerifier = artifacts.require('WithdrawVerifier')
-const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
+const DepositVerifier = artifacts.require('DepositMiniVerifier')
+const WithdrawVerifier = artifacts.require('WithdrawMiniVerifier')
+const TreeUpdateVerifier = artifacts.require('TreeUpdateMiniVerifier')
 const MerkleTree = require('fixed-merkle-tree')
 
 // Set time to beginning of a second
@@ -43,7 +43,7 @@ contract('Poof', (accounts) => {
   const recipient = accounts[1]
   // eslint-disable-next-line no-unused-vars
   const relayer = accounts[2]
-  const levels = 20
+  const levels = 3
   let snapshotId
   const AnotherWeb3 = require('web3')
   let contract

@@ -102,8 +102,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       utils.stringifyBigInts(input),
-      'build/circuits/Deposit.wasm',
-      'build/circuits/Deposit_circuit_final.zkey',
+      'build/circuits/DepositMini.wasm',
+      'build/circuits/DepositMini_circuit_final.zkey',
     )
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(
@@ -201,8 +201,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       utils.stringifyBigInts(input),
-      'build/circuits/Withdraw.wasm',
-      'build/circuits/Withdraw_circuit_final.zkey',
+      'build/circuits/WithdrawMini.wasm',
+      'build/circuits/WithdrawMini_circuit_final.zkey',
     )
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(
@@ -359,8 +359,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       input,
-      'build/circuits/TreeUpdate.wasm',
-      'build/circuits/TreeUpdate_circuit_final.zkey',
+      'build/circuits/TreeUpdateMini.wasm',
+      'build/circuits/TreeUpdateMini_circuit_final.zkey',
     )
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(
