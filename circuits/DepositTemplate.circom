@@ -4,11 +4,15 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 include "./MerkleTree.circom";
 include "./MerkleTreeUpdater.circom";
 
+// Deposit an amount or pay back debt
 template Deposit(levels, zeroLeaf) {
   signal input amount;
+  signal input debt;
+  signal input underlyingPerUnit;
   signal input extDataHash;
 
   signal private input inputAmount;
+  signal private input inputDebt;
   signal private input inputSecret;
   signal private input inputNullifier;
   signal         input inputRoot;
@@ -17,6 +21,7 @@ template Deposit(levels, zeroLeaf) {
   signal         input inputNullifierHash;
 
   signal private input outputAmount;
+  signal private input outputDebt;
   signal private input outputSecret;
   signal private input outputNullifier;
   signal         input outputRoot;
@@ -24,8 +29,13 @@ template Deposit(levels, zeroLeaf) {
   signal private input outputPathElements[levels];
   signal         input outputCommitment;
 
-  // Check public deposit amount
+  // Check amount and debt invariant
   outputAmount === inputAmount + amount;
+  inputDebt === outputDebt + debt;
+  component debtCheck = LessEqThan(248);
+  debtCheck.in[0] <== outputDebt;
+  debtCheck.in[1] <== outputAmount * underlyingPerUnit;
+  debtCheck.out === 1;
 
   // === check input and output accounts and block range ===
   // Check that amounts fit into 248 bits to prevent overflow
@@ -37,10 +47,11 @@ template Deposit(levels, zeroLeaf) {
   outputAmountCheck.in <== outputAmount;
 
   // Compute input commitment
-  component inputHasher = Poseidon(3);
+  component inputHasher = Poseidon(4);
   inputHasher.inputs[0] <== inputAmount;
-  inputHasher.inputs[1] <== inputSecret;
-  inputHasher.inputs[2] <== inputNullifier;
+  inputHasher.inputs[1] <== inputDebt;
+  inputHasher.inputs[2] <== inputSecret;
+  inputHasher.inputs[3] <== inputNullifier;
 
   // Verify that input commitment exists in the tree
   component inputTree = MerkleTree(levels);
@@ -62,10 +73,11 @@ template Deposit(levels, zeroLeaf) {
   inputNullifierHasher.out === inputNullifierHash;
 
   // Compute and verify output commitment
-  component outputHasher = Poseidon(3);
+  component outputHasher = Poseidon(4);
   outputHasher.inputs[0] <== outputAmount;
-  outputHasher.inputs[1] <== outputSecret;
-  outputHasher.inputs[2] <== outputNullifier;
+  outputHasher.inputs[1] <== outputDebt;
+  outputHasher.inputs[2] <== outputSecret;
+  outputHasher.inputs[3] <== outputNullifier;
   outputHasher.out === outputCommitment;
 
   // Update accounts tree with output account commitment

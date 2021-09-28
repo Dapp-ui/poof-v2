@@ -15,9 +15,10 @@ const MerkleTree = require('fixed-merkle-tree')
 const snarkjs = require('snarkjs')
 
 class Controller {
-  constructor({ contract, merkleTreeHeight }) {
+  constructor({ contract, merkleTreeHeight, provingKeys }) {
     this.merkleTreeHeight = Number(merkleTreeHeight)
     this.contract = contract
+    this.provingKeys = provingKeys
   }
 
   async _fetchAccountCommitments() {
@@ -46,12 +47,14 @@ class Controller {
   async deposit({
     account,
     amount,
+    debt = toBN(0),
+    underlyingPerUnit = toBN(1),
     publicKey,
     accountCommitments = null,
-    operation = 0,
   }) {
     const newAmount = account.amount.add(amount)
-    const newAccount = new Account({ amount: newAmount })
+    const newDebt = account.debt.sub(debt)
+    const newAccount = new Account({ amount: newAmount, debt: newDebt })
 
     accountCommitments =
       accountCommitments || (await this._fetchAccountCommitments())
@@ -77,13 +80,16 @@ class Controller {
     )
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
-    const extDataHash = getExtDepositArgsHash({ encryptedAccount, operation })
+    const extDataHash = getExtDepositArgsHash({ encryptedAccount })
 
     const input = {
       amount,
+      debt,
+      underlyingPerUnit,
       extDataHash,
 
       inputAmount: account.amount,
+      inputDebt: account.debt,
       inputSecret: account.secret,
       inputNullifier: account.nullifier,
       inputRoot: accountTreeUpdate.oldRoot,
@@ -92,6 +98,7 @@ class Controller {
       inputNullifierHash: account.nullifierHash,
 
       outputAmount: newAccount.amount,
+      outputDebt: newAccount.debt,
       outputSecret: newAccount.secret,
       outputNullifier: newAccount.nullifier,
       outputRoot: accountTreeUpdate.newRoot,
@@ -102,8 +109,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       utils.stringifyBigInts(input),
-      'build/circuits/DepositMini.wasm',
-      'build/circuits/DepositMini_circuit_final.zkey',
+      this.provingKeys.depositWasm,
+      this.provingKeys.depositZkey,
     )
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(
@@ -114,10 +121,11 @@ class Controller {
 
     const args = {
       amount: toFixedHex(amount),
+      debt: toFixedHex(debt),
+      underlyingPerUnit: toFixedHex(underlyingPerUnit),
       extDataHash,
       extData: {
         encryptedAccount,
-        operation,
       },
       account: {
         inputRoot: toFixedHex(input.inputRoot),
@@ -140,13 +148,16 @@ class Controller {
     publicKey,
     depositProof,
     depositArgs,
+    underlyingPerUnit = toBN(1),
     accountCommitments = null,
     fee = toBN(0),
     relayer = 0,
   }) {
     const amount = toBN(depositArgs.amount).add(fee)
+    const debt = toBN(depositArgs.debt)
     const newAmount = account.amount.sub(amount)
-    const newAccount = new Account({ amount: newAmount })
+    const newDebt = account.debt.add(debt)
+    const newAccount = new Account({ amount: newAmount, debt: newDebt })
 
     accountCommitments =
       accountCommitments || (await this._fetchAccountCommitments())
@@ -180,9 +191,12 @@ class Controller {
 
     const input = {
       amount,
+      debt,
+      underlyingPerUnit,
       extDataHash,
 
       inputAmount: account.amount,
+      inputDebt: account.debt,
       inputSecret: account.secret,
       inputNullifier: account.nullifier,
       inputRoot: accountTreeUpdate.oldRoot,
@@ -191,6 +205,7 @@ class Controller {
       inputNullifierHash: account.nullifierHash,
 
       outputAmount: newAccount.amount,
+      outputDebt: newAccount.debt,
       outputSecret: newAccount.secret,
       outputNullifier: newAccount.nullifier,
       outputRoot: accountTreeUpdate.newRoot,
@@ -201,8 +216,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       utils.stringifyBigInts(input),
-      'build/circuits/WithdrawMini.wasm',
-      'build/circuits/WithdrawMini_circuit_final.zkey',
+      this.provingKeys.withdrawWasm,
+      this.provingKeys.withdrawZkey,
     )
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(
@@ -213,6 +228,8 @@ class Controller {
 
     const args = {
       amount: toFixedHex(amount),
+      debt: toFixedHex(debt),
+      underlyingPerUnit: toFixedHex(underlyingPerUnit),
       extDataHash,
       extData: {
         fee: toFixedHex(fee),
@@ -239,15 +256,17 @@ class Controller {
   async withdraw({
     account,
     amount: withdrawAmount,
+    debt = toBN(0),
+    underlyingPerUnit = toBN(1),
     recipient,
     publicKey,
     fee = toBN(0),
     relayer = 0,
-    operation = 1,
   }) {
     const amount = withdrawAmount.add(fee)
     const newAmount = account.amount.sub(toBN(amount))
-    const newAccount = new Account({ amount: newAmount })
+    const newDebt = account.debt.add(toBN(debt))
+    const newAccount = new Account({ amount: newAmount, debt: newDebt })
 
     const accountCommitments = await this._fetchAccountCommitments()
     const accountTree = new MerkleTree(
@@ -277,14 +296,16 @@ class Controller {
       recipient,
       relayer,
       encryptedAccount,
-      operation,
     })
 
     const input = {
-      amount: amount,
+      amount,
+      debt,
+      underlyingPerUnit,
       extDataHash,
 
       inputAmount: account.amount,
+      inputDebt: account.debt,
       inputSecret: account.secret,
       inputNullifier: account.nullifier,
       inputNullifierHash: account.nullifierHash,
@@ -293,6 +314,7 @@ class Controller {
       inputPathElements: accountPath.pathElements,
 
       outputAmount: newAccount.amount,
+      outputDebt: newAccount.debt,
       outputSecret: newAccount.secret,
       outputNullifier: newAccount.nullifier,
       outputRoot: accountTreeUpdate.newRoot,
@@ -303,8 +325,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       utils.stringifyBigInts(input),
-      'build/circuits/Withdraw.wasm',
-      'build/circuits/Withdraw_circuit_final.zkey',
+      this.provingKeys.withdrawWasm,
+      this.provingKeys.withdrawZkey,
     )
 
     const [proof] = (
@@ -316,13 +338,14 @@ class Controller {
 
     const args = {
       amount: toFixedHex(input.amount),
+      debt: toFixedHex(input.debt),
+      underlyingPerUnit: toFixedHex(input.underlyingPerUnit),
       extDataHash: toFixedHex(input.extDataHash),
       extData: {
         fee: toFixedHex(fee),
         recipient: toFixedHex(recipient, 20),
         relayer: toFixedHex(relayer, 20),
         encryptedAccount,
-        operation,
       },
       account: {
         inputRoot: toFixedHex(input.inputRoot),
@@ -359,8 +382,8 @@ class Controller {
 
     const { proof: proofData } = await snarkjs.plonk.fullProve(
       input,
-      'build/circuits/TreeUpdateMini.wasm',
-      'build/circuits/TreeUpdateMini_circuit_final.zkey',
+      this.provingKeys.treeUpdateWasm,
+      this.provingKeys.treeUpdateZkey,
     )
     const [proof] = (
       await snarkjs.plonk.exportSolidityCallData(

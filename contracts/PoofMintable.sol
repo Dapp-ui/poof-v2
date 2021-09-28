@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./Poof.sol";
 import "./interfaces/IVerifier.sol";
+import "hardhat/console.sol";
 
 abstract contract PoofMintable is Poof, ERC20 {
   using SafeMath for uint256;
@@ -32,10 +33,9 @@ abstract contract PoofMintable is Poof, ERC20 {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
-    // Check operation here to ensure that the proof is not used for depositing
-    require(_args.extData.operation == Operation.BURN, "Incorrect operation");
+    require(_args.amount == 0, "Cannot use amount for burning");
     beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
-    _burn(msg.sender, _args.amount);
+    _burn(msg.sender, _args.debt);
   }
 
   function mint(bytes memory _proof, WithdrawArgs memory _args) external {
@@ -48,12 +48,10 @@ abstract contract PoofMintable is Poof, ERC20 {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
-    // Check operation here to ensure that the proof is not used for withdrawing
-    require(_args.extData.operation == Operation.MINT, "Incorrect operation");
+    require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
     beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
-    uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
-    if (amount > 0) {
-      _mint(_args.extData.recipient, amount);
+    if (_args.debt > 0) {
+      _mint(_args.extData.recipient, _args.debt);
     }
     if (_args.extData.fee > 0) {
       token.safeTransfer(_args.extData.relayer, _args.extData.fee);

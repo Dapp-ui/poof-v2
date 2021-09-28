@@ -3,22 +3,27 @@ const { encrypt, decrypt } = require('eth-sig-util')
 const { randomBN, poseidonHash } = require('./utils')
 
 class Account {
-  constructor({ amount, secret, nullifier } = {}) {
+  constructor({ amount, debt, secret, nullifier } = {}) {
     this.amount = amount ? toBN(amount) : toBN('0')
+    this.debt = debt ? toBN(debt) : toBN('0')
     this.secret = secret ? toBN(secret) : randomBN(31)
     this.nullifier = nullifier ? toBN(nullifier) : randomBN(31)
 
-    this.commitment = poseidonHash([this.amount, this.secret, this.nullifier])
+    this.commitment = poseidonHash([this.amount, this.debt, this.secret, this.nullifier])
     this.nullifierHash = poseidonHash([this.nullifier])
 
     if (this.amount.lt(toBN(0))) {
       throw new Error('Cannot create an account with negative amount')
+    }
+    if (this.debt.lt(toBN(0))) {
+      throw new Error('Cannot create an account with negative debt')
     }
   }
 
   encrypt(pubkey) {
     const bytes = Buffer.concat([
       this.amount.toBuffer('be', 31),
+      this.debt.toBuffer('be', 31),
       this.secret.toBuffer('be', 31),
       this.nullifier.toBuffer('be', 31),
     ])
@@ -30,8 +35,9 @@ class Account {
     const buf = Buffer.from(decryptedMessage, 'base64')
     return new Account({
       amount: toBN('0x' + buf.slice(0, 31).toString('hex')),
-      secret: toBN('0x' + buf.slice(31, 62).toString('hex')),
-      nullifier: toBN('0x' + buf.slice(62, 93).toString('hex')),
+      debt: toBN('0x' + buf.slice(31, 62).toString('hex')),
+      secret: toBN('0x' + buf.slice(62, 93).toString('hex')),
+      nullifier: toBN('0x' + buf.slice(93, 124).toString('hex')),
     })
   }
 }

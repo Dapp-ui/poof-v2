@@ -3,7 +3,7 @@ require('chai')
   .use(require('bn-chai')(web3.utils.BN))
   .use(require('chai-as-promised'))
   .should()
-
+const fs = require('fs')
 const { toBN } = require('web3-utils')
 const {
   takeSnapshot,
@@ -38,17 +38,20 @@ contract('PoofMintableLendable', (accounts) => {
   let dToken
   let poof
   const amount = toBN(16)
+  const debt = amount.mul(toBN(2))
   // eslint-disable-next-line no-unused-vars
   const sender = accounts[0]
   const recipient = accounts[1]
   // eslint-disable-next-line no-unused-vars
-  const levels = 3
+  const merkleTreeHeight = 3
   let snapshotId
   const AnotherWeb3 = require('web3')
   let contract
   let controller
 
-  const emptyTree = new MerkleTree(levels, [], { hashFunction: poseidonHash2 })
+  const emptyTree = new MerkleTree(merkleTreeHeight, [], {
+    hashFunction: poseidonHash2,
+  })
   const privateKey = web3.eth.accounts.create().privateKey.slice(2)
   const publicKey = getEncryptionPublicKey(privateKey)
 
@@ -74,9 +77,24 @@ contract('PoofMintableLendable', (accounts) => {
 
     const anotherWeb3 = new AnotherWeb3(web3.currentProvider)
     contract = new anotherWeb3.eth.Contract(poof.abi, poof.address)
+    const provingKeys = {
+      depositWasm: fs.readFileSync('./build/circuits/DepositMini.wasm'),
+      depositZkey: fs.readFileSync(
+        './build/circuits/DepositMini_circuit_final.zkey',
+      ),
+      withdrawWasm: fs.readFileSync('./build/circuits/WithdrawMini.wasm'),
+      withdrawZkey: fs.readFileSync(
+        './build/circuits/WithdrawMini_circuit_final.zkey',
+      ),
+      treeUpdateWasm: fs.readFileSync('./build/circuits/TreeUpdateMini.wasm'),
+      treeUpdateZkey: fs.readFileSync(
+        './build/circuits/TreeUpdateMini_circuit_final.zkey',
+      ),
+    }
     controller = new Controller({
       contract,
-      merkleTreeHeight: levels,
+      merkleTreeHeight,
+      provingKeys,
     })
     snapshotId = await takeSnapshot()
   })
@@ -191,7 +209,7 @@ contract('PoofMintableLendable', (accounts) => {
     })
   })
 
-  describe('#mint and #burn', () => {
+  describe('#mint', () => {
     let proof, args, account
 
     beforeEach(async () => {
@@ -199,41 +217,140 @@ contract('PoofMintableLendable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
+        underlyingPerUnit: toBN(2),
       }))
       await poof.deposit(proof, args)
     })
 
-    it('should work', async () => {
+    it('should fail if amount is != fee', async () => {
       const mintSnark = await controller.withdraw({
         account,
         amount,
         recipient: sender,
         publicKey,
-        operation: 2,
       })
       await timeReset()
+      await poof
+        .mint(mintSnark.proof, mintSnark.args)
+        .should.be.rejectedWith('Amount can only be used for fee')
+    })
 
-      // Mint
+    it('should fail if debt > user balance', async () => {
+      await controller
+        .withdraw({
+          account,
+          amount: toBN(0),
+          debt: debt.add(toBN(1)),
+          underlyingPerUnit: toBN(2),
+          recipient: sender,
+          publicKey,
+        })
+        .should.be.rejectedWith('T Polynomial is not divisible')
+    })
+
+    it('should fail if `underlyingPerUnit` is lower than expected', async () => {
+      const mintSnark = await controller.withdraw({
+        account,
+        amount: toBN(0),
+        debt: debt.add(toBN(1)),
+        underlyingPerUnit: toBN(3),
+        recipient: sender,
+        publicKey,
+      })
+      await poof
+        .mint(mintSnark.proof, mintSnark.args)
+        .should.be.rejectedWith('Underlying per unit is overstated')
+    })
+
+    it('should work', async () => {
+      const mintSnark = await controller.withdraw({
+        account,
+        amount: toBN(0),
+        debt,
+        underlyingPerUnit: toBN(2),
+        recipient: sender,
+        publicKey,
+      })
       let balanceBefore = await poof.balanceOf(sender)
-      balanceBefore.should.be.eq.BN(0)
       await poof.mint(mintSnark.proof, mintSnark.args)
       let balanceAfter = await poof.balanceOf(sender)
-      balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
+      balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
+    })
+  })
 
-      const burnSnark = await controller.deposit({
-        account: mintSnark.account,
-        amount,
+  describe('#burn', () => {
+    let proof, args, account
+    beforeEach(async () => {
+      ;({ proof, args, account } = await controller.deposit({
+        account: new Account(),
         publicKey,
-        operation: 3,
+        amount,
+      }))
+      await poof.deposit(proof, args)
+      ;({ proof, args, account } = await controller.withdraw({
+        account,
+        amount: toBN(0),
+        debt,
+        underlyingPerUnit: toBN(2),
+        recipient: sender,
+        publicKey,
+      }))
+      await poof.mint(proof, args)
+    })
+
+    it('should fail if amount is > 0', async () => {
+      const burnSnark = await controller.deposit({
+        account,
+        amount,
+        recipient: sender,
+        publicKey,
       })
       await timeReset()
+      await poof
+        .burn(burnSnark.proof, burnSnark.args)
+        .should.be.rejectedWith('Cannot use amount for burning')
+    })
 
-      // Burn
-      balanceBefore = await poof.balanceOf(sender)
+    it('should fail if debt > user debt', async () => {
+      await controller
+        .deposit({
+          account,
+          amount: toBN(0),
+          debt: debt.add(toBN(1)),
+          underlyingPerUnit: toBN(2),
+          recipient: sender,
+          publicKey,
+        })
+        .should.be.rejectedWith('Cannot create an account with negative debt')
+    })
+
+    it('should fail if `underlyingPerUnit` is lower than expected', async () => {
+      const burnSnark = await controller.deposit({
+        account,
+        amount: toBN(0),
+        debt,
+        underlyingPerUnit: toBN(3),
+        recipient: sender,
+        publicKey,
+      })
+      await poof
+        .burn(burnSnark.proof, burnSnark.args)
+        .should.be.rejectedWith('Underlying per unit is overstated')
+    })
+
+    it('should work', async () => {
+      const burnSnark = await controller.deposit({
+        account,
+        amount: toBN(0),
+        debt,
+        underlyingPerUnit: toBN(2),
+        recipient: sender,
+        publicKey,
+      })
+      let balanceBefore = await poof.balanceOf(sender)
       await poof.burn(burnSnark.proof, burnSnark.args)
-      balanceAfter = await poof.balanceOf(sender)
-      balanceAfter.should.be.eq.BN(0)
-      balanceBefore.should.be.eq.BN(balanceAfter.add(amount))
+      let balanceAfter = await poof.balanceOf(sender)
+      balanceBefore.should.be.eq.BN(balanceAfter.add(debt))
     })
   })
 

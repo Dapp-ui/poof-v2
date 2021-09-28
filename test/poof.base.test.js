@@ -3,7 +3,7 @@ require('chai')
   .use(require('bn-chai')(web3.utils.BN))
   .use(require('chai-as-promised'))
   .should()
-
+const fs = require('fs')
 const { toBN } = require('web3-utils')
 const {
   takeSnapshot,
@@ -43,13 +43,15 @@ contract('Poof', (accounts) => {
   const recipient = accounts[1]
   // eslint-disable-next-line no-unused-vars
   const relayer = accounts[2]
-  const levels = 3
+  const merkleTreeHeight = 3
   let snapshotId
   const AnotherWeb3 = require('web3')
   let contract
   let controller
 
-  const emptyTree = new MerkleTree(levels, [], { hashFunction: poseidonHash2 })
+  const emptyTree = new MerkleTree(merkleTreeHeight, [], {
+    hashFunction: poseidonHash2,
+  })
   const privateKey = web3.eth.accounts.create().privateKey.slice(2)
   const publicKey = getEncryptionPublicKey(privateKey)
 
@@ -72,9 +74,24 @@ contract('Poof', (accounts) => {
 
     const anotherWeb3 = new AnotherWeb3(web3.currentProvider)
     contract = new anotherWeb3.eth.Contract(poof.abi, poof.address)
+    const provingKeys = {
+      depositWasm: fs.readFileSync('./build/circuits/DepositMini.wasm'),
+      depositZkey: fs.readFileSync(
+        './build/circuits/DepositMini_circuit_final.zkey',
+      ),
+      withdrawWasm: fs.readFileSync('./build/circuits/WithdrawMini.wasm'),
+      withdrawZkey: fs.readFileSync(
+        './build/circuits/WithdrawMini_circuit_final.zkey',
+      ),
+      treeUpdateWasm: fs.readFileSync('./build/circuits/TreeUpdateMini.wasm'),
+      treeUpdateZkey: fs.readFileSync(
+        './build/circuits/TreeUpdateMini_circuit_final.zkey',
+      ),
+    }
     controller = new Controller({
       contract,
-      merkleTreeHeight: levels,
+      merkleTreeHeight,
+      provingKeys,
     })
     snapshotId = await takeSnapshot()
   })
@@ -87,6 +104,9 @@ contract('Poof', (accounts) => {
     it('should throw on negative amount', () => {
       ;(() => new Account({ amount: toBN(-1) })).should.throw(
         'Cannot create an account with negative amount',
+      )
+      ;(() => new Account({ debt: toBN(-1) })).should.throw(
+        'Cannot create an account with negative debt',
       )
     })
   })
@@ -310,7 +330,7 @@ contract('Poof', (accounts) => {
       const account3 = new Account()
 
       const fakeTree = new MerkleTree(
-        levels,
+        merkleTreeHeight,
         [account1.commitment, account2.commitment, account3.commitment],
         { hashFunction: poseidonHash2 },
       )
@@ -1184,7 +1204,6 @@ contract('Poof', (accounts) => {
         recipient: fakeRecipient,
         relayer: fakeRelayer,
         encryptedAccount: malformedArgs.extData.encryptedAccount,
-        operation: 1,
       })
       malformedArgs.extData.fee = fakeFee
       malformedArgs.extData.relayer = fakeRelayer
@@ -1217,7 +1236,9 @@ contract('Poof', (accounts) => {
       })
       await poof.deposit(claim2.proof, claim2.args)
 
-      const tree = new MerkleTree(levels, [], { hashFunction: poseidonHash2 })
+      const tree = new MerkleTree(merkleTreeHeight, [], {
+        hashFunction: poseidonHash2,
+      })
       await poof.isKnownAccountRoot(toFixedHex(tree.root()), 0).should
         .eventually.be.true
 

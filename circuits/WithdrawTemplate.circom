@@ -1,14 +1,19 @@
 include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
 include "./MerkleTree.circom";
 include "./MerkleTreeUpdater.circom";
 
+// Withdraw an amount or take a loan
 template Withdraw(levels, zeroLeaf) {
   // fee is included into the `amount` input
   signal input amount;
+  signal input debt;
+  signal input underlyingPerUnit;
   signal input extDataHash;
 
   signal private input inputAmount;
+  signal private input inputDebt;
   signal private input inputSecret;
   signal private input inputNullifier;
   signal         input inputRoot;
@@ -17,6 +22,7 @@ template Withdraw(levels, zeroLeaf) {
   signal         input inputNullifierHash;
 
   signal private input outputAmount;
+  signal private input outputDebt;
   signal private input outputSecret;
   signal private input outputNullifier;
   signal         input outputRoot;
@@ -24,8 +30,13 @@ template Withdraw(levels, zeroLeaf) {
   signal private input outputPathElements[levels];
   signal         input outputCommitment;
 
-  // Verify amount invariant
+  // Verify amount and debt invariant
   inputAmount === outputAmount + amount;
+  outputDebt === inputDebt + debt;
+  component debtCheck = LessEqThan(248);
+  debtCheck.in[0] <== outputDebt;
+  debtCheck.in[1] <== outputAmount * underlyingPerUnit;
+  debtCheck.out === 1;
 
   // Check that amounts fit into 248 bits to prevent overflow
   // Amount range is checked by the smart contract
@@ -35,10 +46,11 @@ template Withdraw(levels, zeroLeaf) {
   outputAmountCheck.in <== outputAmount;
 
   // Compute input commitment
-  component inputHasher = Poseidon(3);
+  component inputHasher = Poseidon(4);
   inputHasher.inputs[0] <== inputAmount;
-  inputHasher.inputs[1] <== inputSecret;
-  inputHasher.inputs[2] <== inputNullifier;
+  inputHasher.inputs[1] <== inputDebt;
+  inputHasher.inputs[2] <== inputSecret;
+  inputHasher.inputs[3] <== inputNullifier;
 
   // Verify that input commitment exists in the tree
   component tree = MerkleTree(levels);
@@ -55,10 +67,11 @@ template Withdraw(levels, zeroLeaf) {
   nullifierHasher.out === inputNullifierHash;
 
   // Compute and verify output commitment
-  component outputHasher = Poseidon(3);
+  component outputHasher = Poseidon(4);
   outputHasher.inputs[0] <== outputAmount;
-  outputHasher.inputs[1] <== outputSecret;
-  outputHasher.inputs[2] <== outputNullifier;
+  outputHasher.inputs[1] <== outputDebt;
+  outputHasher.inputs[2] <== outputSecret;
+  outputHasher.inputs[3] <== outputNullifier;
   outputHasher.out === outputCommitment;
 
   // Update accounts tree with output account commitment

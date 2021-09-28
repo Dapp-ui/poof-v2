@@ -12,8 +12,6 @@ contract Poof {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
-  enum Operation { DEPOSIT, WITHDRAW, MINT, BURN }
-
   IERC20 public token;
 
   IVerifier public depositVerifier;
@@ -45,11 +43,12 @@ contract Poof {
 
   struct DepositExtData {
     bytes encryptedAccount;
-    Operation operation;
   }
 
   struct DepositArgs {
     uint256 amount;
+    uint256 debt;
+    uint256 underlyingPerUnit;
     bytes32 extDataHash;
     DepositExtData extData;
     AccountUpdate account;
@@ -64,6 +63,8 @@ contract Poof {
 
   struct TransferArgs {
     uint256 amount;
+    uint256 debt;
+    uint256 underlyingPerUnit;
     bytes32 extDataHash;
     TransferExtData extData;
     AccountUpdate account;
@@ -74,11 +75,12 @@ contract Poof {
     address recipient;
     address relayer;
     bytes encryptedAccount;
-    Operation operation;
   }
 
   struct WithdrawArgs {
     uint256 amount;
+    uint256 debt;
+    uint256 underlyingPerUnit;
     bytes32 extDataHash;
     WithdrawExtData extData;
     AccountUpdate account;
@@ -104,8 +106,8 @@ contract Poof {
     return res;
   }
 
-  function toDynamicArray(uint256[7] memory arr) internal pure returns (uint256[] memory) {
-    uint256[] memory res = new uint256[](7);
+  function toDynamicArray(uint256[9] memory arr) internal pure returns (uint256[] memory) {
+    uint256[] memory res = new uint256[](9);
     for (uint i = 0; i < arr.length; i++) {
       res[i] = arr[i];
     }
@@ -124,46 +126,23 @@ contract Poof {
   ) external {
     require(_fromArgs.amount - _fromArgs.extData.fee == _toArgs.amount, "Transfer is unfair");
     require(_fromArgs.extData.depositProofHash == keccak248(abi.encode(_toProof)), "'from' proof hash does not match 'to' proof hash");
-    // Check operation here to ensure that the proof is not used for burning
-    require(_toArgs.extData.operation == Operation.DEPOSIT, "Incorrect operation");
 
     // Validate and update the `to` account
-    validateAccountUpdate(_toArgs.account, _toTreeUpdateProof, _toTreeUpdateArgs);
-    require(_toArgs.extDataHash == keccak248(abi.encode(_toArgs.extData)), "Incorrect 'to' external data hash");
-    require(
-      depositVerifier.verifyProof(
-        _toProof,
-        toDynamicArray([
-          uint256(_toArgs.amount),
-          uint256(_toArgs.extDataHash),
-          uint256(_toArgs.account.inputRoot),
-          uint256(_toArgs.account.inputNullifierHash),
-          uint256(_toArgs.account.outputRoot),
-          uint256(_toArgs.account.outputPathIndices),
-          uint256(_toArgs.account.outputCommitment)
-        ])
-      ),
-      "Invalid deposit proof"
-    );
-
-    accountNullifiers[_toArgs.account.inputNullifierHash] = true;
-    insertAccountRoot(_toArgs.account.inputRoot == getLastAccountRoot() ? _toArgs.account.outputRoot : _toTreeUpdateArgs.newRoot);
-
-    emit NewAccount(
-      _toArgs.account.outputCommitment,
-      _toArgs.account.inputNullifierHash,
-      _toArgs.extData.encryptedAccount,
-      accountCount - 1
-    );
+    beforeDeposit(_toProof, _toArgs, _toTreeUpdateProof, _toTreeUpdateArgs);
 
     // Validate and update the `from` account
     validateAccountUpdate(_fromArgs.account, _fromTreeUpdateProof, _fromTreeUpdateArgs);
     require(_fromArgs.extDataHash == keccak248(abi.encode(_fromArgs.extData)), "Incorrect 'from' external data hash");
+    require(_fromArgs.amount < 2**248, "Amount value out of range");
+    require(_fromArgs.amount >= _fromArgs.extData.fee, "Amount should be >= than fee");
+    require(_fromArgs.underlyingPerUnit <= underlyingPerUnit(), "Underlying per unit is overstated");
     require(
       withdrawVerifier.verifyProof(
         _fromProof,
         toDynamicArray([
           uint256(_fromArgs.amount),
+          uint256(_fromArgs.debt),
+          uint256(_fromArgs.underlyingPerUnit),
           uint256(_fromArgs.extDataHash),
           uint256(_fromArgs.account.inputRoot),
           uint256(_fromArgs.account.inputNullifierHash),
@@ -175,10 +154,6 @@ contract Poof {
       "Invalid withdrawal proof"
     );
 
-    if (_fromArgs.extData.fee > 0) {
-      token.safeTransfer(_fromArgs.extData.relayer, _fromArgs.extData.fee);
-    }
-
     accountNullifiers[_fromArgs.account.inputNullifierHash] = true;
     insertAccountRoot(_fromArgs.account.inputRoot == getLastAccountRoot() ? _fromArgs.account.outputRoot : _fromTreeUpdateArgs.newRoot);
 
@@ -188,6 +163,10 @@ contract Poof {
       _fromArgs.extData.encryptedAccount,
       accountCount - 1
     );
+
+    if (_fromArgs.extData.fee > 0) {
+      token.safeTransfer(_fromArgs.extData.relayer, _fromArgs.extData.fee);
+    }
   }
 
   function beforeDeposit(
@@ -198,11 +177,14 @@ contract Poof {
   ) internal {
     validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
+    require(_args.underlyingPerUnit <= underlyingPerUnit(), "Underlying per unit is overstated");
     require(
       depositVerifier.verifyProof(
         _proof,
         toDynamicArray([
           uint256(_args.amount),
+          uint256(_args.debt),
+          uint256(_args.underlyingPerUnit),
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
           uint256(_args.account.inputNullifierHash),
@@ -226,6 +208,7 @@ contract Poof {
   }
 
   function deposit(bytes memory _proof, DepositArgs memory _args) external virtual {
+    require(_args.debt == 0, "Cannot use debt for depositing");
     deposit(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -235,8 +218,6 @@ contract Poof {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public virtual {
-    // Check operation here to ensure that the proof is not used for burning
-    require(_args.extData.operation == Operation.DEPOSIT, "Incorrect operation");
     beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     token.safeTransferFrom(msg.sender, address(this), _args.amount);
   }
@@ -249,13 +230,18 @@ contract Poof {
   ) internal {
     validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
+    // Input check because zkSNARKs work modulo p
     require(_args.amount < 2**248, "Amount value out of range");
+    require(_args.debt < 2**248, "Debt value out of range");
     require(_args.amount >= _args.extData.fee, "Amount should be >= than fee");
+    require(_args.underlyingPerUnit <= underlyingPerUnit(), "Underlying per unit is overstated");
     require(
       withdrawVerifier.verifyProof(
         _proof,
         toDynamicArray([
           uint256(_args.amount),
+          uint256(_args.debt),
+          uint256(_args.underlyingPerUnit),
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
           uint256(_args.account.inputNullifierHash),
@@ -279,6 +265,7 @@ contract Poof {
   }
 
   function withdraw(bytes memory _proof, WithdrawArgs memory _args) external virtual {
+    require(_args.debt == 0, "Cannot use debt for withdrawing");
     withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
@@ -288,8 +275,6 @@ contract Poof {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public virtual {
-    // Check operation here to ensure that the proof is not used for minting
-    require(_args.extData.operation == Operation.WITHDRAW, "Incorrect operation");
     beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
     if (amount > 0) {
@@ -314,6 +299,10 @@ contract Poof {
     */
   function getLastAccountRoot() public view returns (bytes32) {
     return accountRoots[accountCount % ACCOUNT_ROOT_HISTORY_SIZE];
+  }
+
+  function underlyingPerUnit() public view virtual returns (uint256) {
+    return 1;
   }
 
   // -----INTERNAL-------
@@ -360,4 +349,5 @@ contract Poof {
   function insertAccountRoot(bytes32 _root) internal {
     accountRoots[++accountCount % ACCOUNT_ROOT_HISTORY_SIZE] = _root;
   }
+  
 }
