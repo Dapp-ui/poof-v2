@@ -178,7 +178,6 @@ contract('PoofMintableLendable', (accounts) => {
         recipient,
         publicKey,
       })
-      await timeReset()
       const balanceBefore = await uToken.balanceOf(recipient)
       const { logs } = await poof.withdraw(
         withdrawSnark.proof,
@@ -233,7 +232,6 @@ contract('PoofMintableLendable', (accounts) => {
         recipient: sender,
         publicKey,
       })
-      await timeReset()
       await poof
         .mint(mintSnark.proof, mintSnark.args)
         .should.be.rejectedWith('Amount can only be used for fee')
@@ -321,7 +319,6 @@ contract('PoofMintableLendable', (accounts) => {
         recipient: sender,
         publicKey,
       })
-      await timeReset()
       await poof
         .burn(burnSnark.proof, burnSnark.args)
         .should.be.rejectedWith('Cannot use amount for burning')

@@ -197,7 +197,6 @@ contract('Poof', (accounts) => {
         publicKey,
         amount,
       })
-      await timeReset()
       await poof.deposit(deposit.proof, deposit.args)
 
       const fee = toBN(3)
@@ -209,7 +208,6 @@ contract('Poof', (accounts) => {
         relayer,
         fee,
       })
-      await timeReset()
 
       const relayerBalanceBefore = await token.balanceOf(relayer)
       const recipientBalanceBefore = await token.balanceOf(recipient)
@@ -947,7 +945,6 @@ contract('Poof', (accounts) => {
         recipient,
         publicKey,
       })
-      await timeReset()
       const balanceBefore = await token.balanceOf(recipient)
       const { logs } = await poof.withdraw(
         withdrawSnark.proof,
@@ -987,7 +984,6 @@ contract('Poof', (accounts) => {
         recipient,
         publicKey,
       })
-      await timeReset()
       const balanceBefore = await token.balanceOf(recipient)
       await poof.withdraw(withdrawSnark.proof, withdrawSnark.args)
       const balanceAfter = await token.balanceOf(recipient)
@@ -1101,7 +1097,6 @@ contract('Poof', (accounts) => {
       await poof
         .withdraw(proof, malformedArgs)
         .should.be.rejectedWith('Invalid withdrawal proof')
-      await timeReset()
       const balanceBefore = await token.balanceOf(recipient)
       await poof.withdraw(proof, args)
       const balanceAfter = await token.balanceOf(recipient)
@@ -1132,7 +1127,6 @@ contract('Poof', (accounts) => {
         .withdraw(withdrawal.proof, withdrawal.args)
         .should.be.rejectedWith('Outdated account merkle root')
       const update = await controller.treeUpdate(withdrawal.account.commitment)
-      await timeReset()
       const balanceBefore = await token.balanceOf(recipient)
       await poof.withdraw(
         withdrawal.proof,
@@ -1212,7 +1206,6 @@ contract('Poof', (accounts) => {
       await poof
         .withdraw(proof, malformedArgs)
         .should.be.rejectedWith('Amount should be >= than fee')
-      await timeReset()
       const balanceBefore = await token.balanceOf(recipient)
       await poof.withdraw(proof, args)
       const balanceAfter = await token.balanceOf(recipient)
