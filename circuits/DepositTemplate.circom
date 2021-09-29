@@ -8,7 +8,7 @@ include "./MerkleTreeUpdater.circom";
 template Deposit(levels, zeroLeaf) {
   signal input amount;
   signal input debt;
-  signal input underlyingPerUnit;
+  signal input unitPerUnderlying;
   signal input extDataHash;
 
   signal private input inputAmount;
@@ -33,8 +33,8 @@ template Deposit(levels, zeroLeaf) {
   outputAmount === inputAmount + amount;
   inputDebt === outputDebt + debt;
   component debtCheck = LessEqThan(248);
-  debtCheck.in[0] <== outputDebt;
-  debtCheck.in[1] <== outputAmount * underlyingPerUnit;
+  debtCheck.in[0] <== outputDebt * unitPerUnderlying;
+  debtCheck.in[1] <== outputAmount;
   debtCheck.out === 1;
 
   // === check input and output accounts and block range ===

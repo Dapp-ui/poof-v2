@@ -48,7 +48,7 @@ class Controller {
     account,
     amount,
     debt = toBN(0),
-    underlyingPerUnit = toBN(1),
+    unitPerUnderlying = toBN(1),
     publicKey,
     accountCommitments = null,
   }) {
@@ -85,7 +85,7 @@ class Controller {
     const input = {
       amount,
       debt,
-      underlyingPerUnit,
+      unitPerUnderlying,
       extDataHash,
 
       inputAmount: account.amount,
@@ -122,7 +122,7 @@ class Controller {
     const args = {
       amount: toFixedHex(amount),
       debt: toFixedHex(debt),
-      underlyingPerUnit: toFixedHex(underlyingPerUnit),
+      unitPerUnderlying: toFixedHex(unitPerUnderlying),
       extDataHash,
       extData: {
         encryptedAccount,
@@ -148,7 +148,7 @@ class Controller {
     publicKey,
     depositProof,
     depositArgs,
-    underlyingPerUnit = toBN(1),
+    unitPerUnderlying = toBN(1),
     accountCommitments = null,
     fee = toBN(0),
     relayer = 0,
@@ -192,7 +192,7 @@ class Controller {
     const input = {
       amount,
       debt,
-      underlyingPerUnit,
+      unitPerUnderlying,
       extDataHash,
 
       inputAmount: account.amount,
@@ -229,7 +229,7 @@ class Controller {
     const args = {
       amount: toFixedHex(amount),
       debt: toFixedHex(debt),
-      underlyingPerUnit: toFixedHex(underlyingPerUnit),
+      unitPerUnderlying: toFixedHex(unitPerUnderlying),
       extDataHash,
       extData: {
         fee: toFixedHex(fee),
@@ -257,7 +257,7 @@ class Controller {
     account,
     amount: withdrawAmount,
     debt = toBN(0),
-    underlyingPerUnit = toBN(1),
+    unitPerUnderlying = toBN(1),
     recipient,
     publicKey,
     fee = toBN(0),
@@ -301,7 +301,7 @@ class Controller {
     const input = {
       amount,
       debt,
-      underlyingPerUnit,
+      unitPerUnderlying,
       extDataHash,
 
       inputAmount: account.amount,
@@ -339,7 +339,7 @@ class Controller {
     const args = {
       amount: toFixedHex(input.amount),
       debt: toFixedHex(input.debt),
-      underlyingPerUnit: toFixedHex(input.underlyingPerUnit),
+      unitPerUnderlying: toFixedHex(input.unitPerUnderlying),
       extDataHash: toFixedHex(input.extDataHash),
       extData: {
         fee: toFixedHex(fee),

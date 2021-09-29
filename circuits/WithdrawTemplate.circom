@@ -9,7 +9,7 @@ template Withdraw(levels, zeroLeaf) {
   // fee is included into the `amount` input
   signal input amount;
   signal input debt;
-  signal input underlyingPerUnit;
+  signal input unitPerUnderlying;
   signal input extDataHash;
 
   signal private input inputAmount;
@@ -34,8 +34,8 @@ template Withdraw(levels, zeroLeaf) {
   inputAmount === outputAmount + amount;
   outputDebt === inputDebt + debt;
   component debtCheck = LessEqThan(248);
-  debtCheck.in[0] <== outputDebt;
-  debtCheck.in[1] <== outputAmount * underlyingPerUnit;
+  debtCheck.in[0] <== outputDebt * unitPerUnderlying;
+  debtCheck.in[1] <== outputAmount;
   debtCheck.out === 1;
 
   // Check that amounts fit into 248 bits to prevent overflow

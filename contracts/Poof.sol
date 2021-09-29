@@ -48,7 +48,7 @@ contract Poof {
   struct DepositArgs {
     uint256 amount;
     uint256 debt;
-    uint256 underlyingPerUnit;
+    uint256 unitPerUnderlying;
     bytes32 extDataHash;
     DepositExtData extData;
     AccountUpdate account;
@@ -64,7 +64,7 @@ contract Poof {
   struct TransferArgs {
     uint256 amount;
     uint256 debt;
-    uint256 underlyingPerUnit;
+    uint256 unitPerUnderlying;
     bytes32 extDataHash;
     TransferExtData extData;
     AccountUpdate account;
@@ -80,7 +80,7 @@ contract Poof {
   struct WithdrawArgs {
     uint256 amount;
     uint256 debt;
-    uint256 underlyingPerUnit;
+    uint256 unitPerUnderlying;
     bytes32 extDataHash;
     WithdrawExtData extData;
     AccountUpdate account;
@@ -135,14 +135,14 @@ contract Poof {
     require(_fromArgs.extDataHash == keccak248(abi.encode(_fromArgs.extData)), "Incorrect 'from' external data hash");
     require(_fromArgs.amount < 2**248, "Amount value out of range");
     require(_fromArgs.amount >= _fromArgs.extData.fee, "Amount should be >= than fee");
-    require(_fromArgs.underlyingPerUnit <= underlyingPerUnit(), "Underlying per unit is overstated");
+    require(_fromArgs.unitPerUnderlying >= unitPerUnderlying(), "Underlying per unit is overstated");
     require(
       withdrawVerifier.verifyProof(
         _fromProof,
         toDynamicArray([
           uint256(_fromArgs.amount),
           uint256(_fromArgs.debt),
-          uint256(_fromArgs.underlyingPerUnit),
+          uint256(_fromArgs.unitPerUnderlying),
           uint256(_fromArgs.extDataHash),
           uint256(_fromArgs.account.inputRoot),
           uint256(_fromArgs.account.inputNullifierHash),
@@ -177,14 +177,14 @@ contract Poof {
   ) internal {
     validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
-    require(_args.underlyingPerUnit <= underlyingPerUnit(), "Underlying per unit is overstated");
+    require(_args.unitPerUnderlying >= unitPerUnderlying(), "Underlying per unit is overstated");
     require(
       depositVerifier.verifyProof(
         _proof,
         toDynamicArray([
           uint256(_args.amount),
           uint256(_args.debt),
-          uint256(_args.underlyingPerUnit),
+          uint256(_args.unitPerUnderlying),
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
           uint256(_args.account.inputNullifierHash),
@@ -234,14 +234,14 @@ contract Poof {
     require(_args.amount < 2**248, "Amount value out of range");
     require(_args.debt < 2**248, "Debt value out of range");
     require(_args.amount >= _args.extData.fee, "Amount should be >= than fee");
-    require(_args.underlyingPerUnit <= underlyingPerUnit(), "Underlying per unit is overstated");
+    require(_args.unitPerUnderlying >= unitPerUnderlying(), "Underlying per unit is overstated");
     require(
       withdrawVerifier.verifyProof(
         _proof,
         toDynamicArray([
           uint256(_args.amount),
           uint256(_args.debt),
-          uint256(_args.underlyingPerUnit),
+          uint256(_args.unitPerUnderlying),
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
           uint256(_args.account.inputNullifierHash),
@@ -301,7 +301,7 @@ contract Poof {
     return accountRoots[accountCount % ACCOUNT_ROOT_HISTORY_SIZE];
   }
 
-  function underlyingPerUnit() public view virtual returns (uint256) {
+  function unitPerUnderlying() public view virtual returns (uint256) {
     return 1;
   }
 

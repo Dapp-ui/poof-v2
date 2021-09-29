@@ -68,7 +68,7 @@ contract PoofLendable is Poof {
     }
   }
 
-  function underlyingPerUnit() public view override returns (uint256) {
+  function unitPerUnderlying() public view override returns (uint256) {
     return debtToken.underlyingToDebt(1);
   }
 }

@@ -38,7 +38,7 @@ contract('PoofMintableLendable', (accounts) => {
   let dToken
   let poof
   const amount = toBN(16)
-  const debt = amount.mul(toBN(2))
+  const debt = amount.div(toBN(2))
   // eslint-disable-next-line no-unused-vars
   const sender = accounts[0]
   const recipient = accounts[1]
@@ -114,6 +114,7 @@ contract('PoofMintableLendable', (accounts) => {
         account: zeroAccount,
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       })
       const balanceBefore = await uToken.balanceOf(sender)
       const { logs } = await poof.deposit(proof, args)
@@ -159,6 +160,7 @@ contract('PoofMintableLendable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       }))
       await poof.deposit(proof, args)
     })
@@ -172,6 +174,7 @@ contract('PoofMintableLendable', (accounts) => {
       const withdrawSnark = await controller.withdraw({
         account,
         amount,
+        unitPerUnderlying: toBN(2),
         recipient,
         publicKey,
       })
@@ -217,7 +220,7 @@ contract('PoofMintableLendable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
-        underlyingPerUnit: toBN(2),
+        unitPerUnderlying: toBN(2),
       }))
       await poof.deposit(proof, args)
     })
@@ -226,6 +229,7 @@ contract('PoofMintableLendable', (accounts) => {
       const mintSnark = await controller.withdraw({
         account,
         amount,
+        unitPerUnderlying: toBN(2),
         recipient: sender,
         publicKey,
       })
@@ -241,19 +245,19 @@ contract('PoofMintableLendable', (accounts) => {
           account,
           amount: toBN(0),
           debt: debt.add(toBN(1)),
-          underlyingPerUnit: toBN(2),
+          unitPerUnderlying: toBN(2),
           recipient: sender,
           publicKey,
         })
         .should.be.rejectedWith('T Polynomial is not divisible')
     })
 
-    it('should fail if `underlyingPerUnit` is lower than expected', async () => {
+    it('should fail if `unitPerUnderlying` is lower than expected', async () => {
       const mintSnark = await controller.withdraw({
         account,
         amount: toBN(0),
         debt: debt.add(toBN(1)),
-        underlyingPerUnit: toBN(3),
+        unitPerUnderlying: toBN(1),
         recipient: sender,
         publicKey,
       })
@@ -267,7 +271,7 @@ contract('PoofMintableLendable', (accounts) => {
         account,
         amount: toBN(0),
         debt,
-        underlyingPerUnit: toBN(2),
+        unitPerUnderlying: toBN(2),
         recipient: sender,
         publicKey,
       })
@@ -276,6 +280,8 @@ contract('PoofMintableLendable', (accounts) => {
       let balanceAfter = await poof.balanceOf(sender)
       balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
     })
+
+    // TODO: Test disallow withdrawals when collateralized
   })
 
   describe('#burn', () => {
@@ -285,13 +291,14 @@ contract('PoofMintableLendable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       }))
       await poof.deposit(proof, args)
       ;({ proof, args, account } = await controller.withdraw({
         account,
         amount: toBN(0),
         debt,
-        underlyingPerUnit: toBN(2),
+        unitPerUnderlying: toBN(2),
         recipient: sender,
         publicKey,
       }))
@@ -302,6 +309,7 @@ contract('PoofMintableLendable', (accounts) => {
       const burnSnark = await controller.deposit({
         account,
         amount,
+        unitPerUnderlying: toBN(2),
         recipient: sender,
         publicKey,
       })
@@ -317,19 +325,19 @@ contract('PoofMintableLendable', (accounts) => {
           account,
           amount: toBN(0),
           debt: debt.add(toBN(1)),
-          underlyingPerUnit: toBN(2),
+          unitPerUnderlying: toBN(2),
           recipient: sender,
           publicKey,
         })
         .should.be.rejectedWith('Cannot create an account with negative debt')
     })
 
-    it('should fail if `underlyingPerUnit` is lower than expected', async () => {
+    it('should fail if `unitPerUnderlying` is lower than expected', async () => {
       const burnSnark = await controller.deposit({
         account,
         amount: toBN(0),
         debt,
-        underlyingPerUnit: toBN(3),
+        unitPerUnderlying: toBN(1),
         recipient: sender,
         publicKey,
       })
@@ -343,7 +351,7 @@ contract('PoofMintableLendable', (accounts) => {
         account,
         amount: toBN(0),
         debt,
-        underlyingPerUnit: toBN(2),
+        unitPerUnderlying: toBN(2),
         recipient: sender,
         publicKey,
       })
