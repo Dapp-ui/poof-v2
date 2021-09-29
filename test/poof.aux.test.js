@@ -279,9 +279,17 @@ contract('PoofMintableLendable', (accounts) => {
       await poof.mint(mintSnark.proof, mintSnark.args)
       let balanceAfter = await poof.balanceOf(sender)
       balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
-    })
 
-    // TODO: Test disallow withdrawals when collateralized
+      await controller
+        .withdraw({
+          account: mintSnark.account,
+          amount: toBN(1),
+          unitPerUnderlying: toBN(2),
+          recipient: sender,
+          publicKey,
+        })
+        .should.be.rejectedWith('T Polynomial is not divisible')
+    })
   })
 
   describe('#burn', () => {
@@ -359,6 +367,19 @@ contract('PoofMintableLendable', (accounts) => {
       await poof.burn(burnSnark.proof, burnSnark.args)
       let balanceAfter = await poof.balanceOf(sender)
       balanceBefore.should.be.eq.BN(balanceAfter.add(debt))
+
+      const withdrawSnark = await controller.withdraw({
+        account: burnSnark.account,
+        amount,
+        unitPerUnderlying: toBN(2),
+        recipient: sender,
+        publicKey,
+      })
+      balanceBefore = await uToken.balanceOf(sender)
+      await poof.withdraw(withdrawSnark.proof, withdrawSnark.args)
+      balanceAfter = await uToken.balanceOf(sender)
+      // `amount` is denominated in dToken which trades at 2:1 with uToken
+      balanceAfter.should.be.eq.BN(balanceBefore.add(amount.div(toBN(2))))
     })
   })
 
