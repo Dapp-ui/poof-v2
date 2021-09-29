@@ -9,28 +9,28 @@ module.exports = function (deployer, network) {
     if (['cmainnet', 'alfajores'].includes(network)) {
       const lendingPool =
         network === 'cmainnet'
-          ? '0xc1548F5AA1D76CDcAB7385FA6B5cEA70f941e535'
-          : '0x0886f74eEEc443fBb6907fB5528B57C28E813129'
+          ? '0x970b12522CA9b4054807a2c5B736149a5BE6f670'
+          : '0x58ad305f1eCe49ca55ADE0D5cCC90114C3902E88'
       const mCELO =
         network === 'cmainnet'
-          ? '0x7037F7296B2fc7908de7b57a89efaa8319f0C500'
-          : '0x86f61EB83e10e914fc6F321F5dD3c2dD4860a003'
+          ? '0x653cC2Cc0Be398614BAd5d5328336dc79281e246'
+          : '0x653cC2Cc0Be398614BAd5d5328336dc79281e246'
       const CELO =
         network === 'cmainnet'
           ? '0x471EcE3750Da237f93B8E339c536989b8978a438'
           : '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9'
       const mcUSD =
         network === 'cmainnet'
-          ? '0x64dEFa3544c695db8c535D289d843a189aa26b98'
-          : '0x71DB38719f9113A36e14F409bAD4F07B58b4730b'
+          ? '0x3a0EA4e0806805527C750AB9b34382642448468D'
+          : '0x3a0EA4e0806805527C750AB9b34382642448468D'
       const cUSD =
         network === 'cmainnet'
           ? '0x765DE816845861e75A25fCA122bb6898B8B1282a'
           : '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1'
       const mcEUR =
         network === 'cmainnet'
-          ? '0xa8d0E6799FF3Fd19c6459bf02689aE09c4d78Ba7'
-          : '0x32974C7335e649932b5766c5aE15595aFC269160'
+          ? '0x0D9B4311657003251d1eFa085e74f761185F271c'
+          : '0x0D9B4311657003251d1eFa085e74f761185F271c'
       const cEUR =
         network === 'cmainnet'
           ? '0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73'

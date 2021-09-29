@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../FeeBase.sol";
 import "../../interfaces/ILendingPool.sol";
 import "../../interfaces/IWERC20.sol";
-import "../../interfaces/IAToken.sol";
 
 contract WrappedMToken is ERC20, FeeBase, IWERC20 {
   using SafeERC20 for IERC20;
@@ -18,7 +17,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
 
   uint256 public constant MULTIPLIER = 1e18;
 
-  IAToken public immutable mToken;
+  IERC20 public immutable mToken;
   IERC20 public immutable token;
   ILendingPool public immutable lendingPool;
 
@@ -33,7 +32,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     address _lendingPool,
     address _feeToSetter
   ) ERC20(_name, _symbol) FeeBase(_feeToSetter) {
-    mToken = IAToken(_mToken);
+    mToken = IERC20(_mToken);
     token = IERC20(_token);
     lendingPool = ILendingPool(_lendingPool);
   }
@@ -72,8 +71,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
   function takeFee() external {
     uint256 fee = totalFee();
     if (fee > 0) {
-      mToken.redeem(fee);
-      token.safeTransfer(feeTo, fee);
+      lendingPool.withdraw(address(token), fee, feeTo);
       lastMBalance = mToken.balanceOf(address(this));
       totalUnredeemedFee = 0;
     }
@@ -84,8 +82,8 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     uint256 toMint = underlyingToDebt(underlyingAmount);
     totalUnredeemedFee = totalUnredeemedFee.add(pendingFee());
     token.safeTransferFrom(msg.sender, address(this), underlyingAmount);
-    require(token.approve(lendingPool.core(), underlyingAmount), "Approve failed");
-    lendingPool.deposit(address(token), underlyingAmount, 88);
+    require(token.approve(address(lendingPool), underlyingAmount), "Approve failed");
+    lendingPool.deposit(address(token), underlyingAmount, address(this), 0);
     _mint(msg.sender, toMint);
 
     // Assign lastMBalance after we have wrapped
@@ -97,8 +95,7 @@ contract WrappedMToken is ERC20, FeeBase, IWERC20 {
     uint256 toReturn = debtToUnderlying(debtAmount);
     totalUnredeemedFee = totalUnredeemedFee.add(pendingFee());
     _burn(msg.sender, debtAmount);
-    mToken.redeem(toReturn);
-    token.safeTransfer(msg.sender, toReturn);
+    lendingPool.withdraw(address(token), toReturn, msg.sender);
 
     // Assign lastMBalance after we have unwrapped
     lastMBalance = mToken.balanceOf(address(this));

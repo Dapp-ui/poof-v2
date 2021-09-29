@@ -139,7 +139,7 @@ contract('WrappedMToken', (accounts) => {
     it('reflect interest earned in the underlying', async () => {
       // Double the amount in the pool
       await token.approve(lendingPool.address, 1500)
-      await lendingPool.deposit(token.address, 1500, 0)
+      await lendingPool.deposit(token.address, 1500, sender, 0)
       await lendingPool.transfer(wToken.address, 1500)
 
       const underlyingAmount = await wToken.debtToUnderlying(toWei('100'))
