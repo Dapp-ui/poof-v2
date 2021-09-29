@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./Poof.sol";
 import "./interfaces/IVerifier.sol";
-import "hardhat/console.sol";
 
 abstract contract PoofMintable is Poof, ERC20 {
   using SafeMath for uint256;
