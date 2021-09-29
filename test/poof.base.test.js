@@ -492,7 +492,7 @@ contract('Poof', (accounts) => {
         proof: fromProof,
         args: fromArgs,
         account: outputFromAccount,
-      } = await controller.transfer({
+      } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: toProof,
@@ -544,7 +544,7 @@ contract('Poof', (accounts) => {
         publicKey,
       })
 
-      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: toProof,
@@ -593,7 +593,7 @@ contract('Poof', (accounts) => {
         publicKey,
       })
 
-      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: toProof,
@@ -677,7 +677,7 @@ contract('Poof', (accounts) => {
         publicKey,
       })
 
-      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: toProof,
@@ -742,7 +742,7 @@ contract('Poof', (accounts) => {
         publicKey,
       })
 
-      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: toProof,
@@ -791,7 +791,7 @@ contract('Poof', (accounts) => {
         )
 
       // Also try to edit depositProofHash
-      const { args: malFromArgs } = await controller.transfer({
+      const { args: malFromArgs } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: malToProof,
@@ -844,7 +844,7 @@ contract('Poof', (accounts) => {
         publicKey,
       })
 
-      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
         account: fromAccount,
         publicKey,
         depositProof: toProof1,
@@ -884,7 +884,7 @@ contract('Poof', (accounts) => {
         publicKey,
       })
 
-      const { proof: fromProof, args: fromArgs } = await controller.transfer({
+      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
         account: fromAccount,
         amount: toBN(toArgs.amount).sub(fee),
         publicKey,

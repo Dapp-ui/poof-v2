@@ -49,6 +49,7 @@ abstract contract PoofMintable is Poof, ERC20 {
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
     require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
+    require(_args.extData.depositProofHash == bytes32(0), "depositProofHash should be 0 for minting");
     beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     if (_args.debt > 0) {
       _mint(_args.extData.recipient, _args.debt);

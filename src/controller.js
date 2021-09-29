@@ -5,7 +5,6 @@ const {
   poseidonHash2,
   getExtDepositArgsHash,
   getDepositProofHash,
-  getExtTransferArgsHash,
   getExtWithdrawArgsHash,
   packEncryptedMessage,
 } = require('./utils')
@@ -143,18 +142,22 @@ class Controller {
     }
   }
 
-  async transfer({
+  async withdraw({
     account,
+    amount: transferAmount,
+    debt = toBN(0),
     publicKey,
     depositProof,
     depositArgs,
     unitPerUnderlying = toBN(1),
     accountCommitments = null,
+    recipient = toBN(0),
     fee = toBN(0),
     relayer = 0,
   }) {
-    const amount = toBN(depositArgs.amount).add(fee)
-    const debt = toBN(depositArgs.debt)
+    const amount = toBN(depositArgs ? depositArgs.amount : transferAmount).add(
+      fee,
+    )
     const newAmount = account.amount.sub(amount)
     const newDebt = account.debt.add(debt)
     const newAccount = new Account({ amount: newAmount, debt: newDebt })
@@ -182,8 +185,9 @@ class Controller {
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
     const depositProofHash = getDepositProofHash(depositProof)
-    const extDataHash = getExtTransferArgsHash({
+    const extDataHash = getExtWithdrawArgsHash({
       fee,
+      recipient,
       relayer,
       depositProofHash,
       encryptedAccount,
@@ -234,117 +238,8 @@ class Controller {
       extData: {
         fee: toFixedHex(fee),
         relayer: toFixedHex(relayer, 20),
-        depositProofHash,
-        encryptedAccount,
-      },
-      account: {
-        inputRoot: toFixedHex(input.inputRoot),
-        inputNullifierHash: toFixedHex(input.inputNullifierHash),
-        outputRoot: toFixedHex(input.outputRoot),
-        outputPathIndices: toFixedHex(input.outputPathIndices),
-        outputCommitment: toFixedHex(input.outputCommitment),
-      },
-    }
-
-    return {
-      proof,
-      args,
-      account: newAccount,
-    }
-  }
-
-  async withdraw({
-    account,
-    amount: withdrawAmount,
-    debt = toBN(0),
-    unitPerUnderlying = toBN(1),
-    recipient,
-    publicKey,
-    fee = toBN(0),
-    relayer = 0,
-  }) {
-    const amount = withdrawAmount.add(fee)
-    const newAmount = account.amount.sub(toBN(amount))
-    const newDebt = account.debt.add(toBN(debt))
-    const newAccount = new Account({ amount: newAmount, debt: newDebt })
-
-    const accountCommitments = await this._fetchAccountCommitments()
-    const accountTree = new MerkleTree(
-      this.merkleTreeHeight,
-      accountCommitments,
-      {
-        hashFunction: poseidonHash2,
-      },
-    )
-    const accountIndex = accountTree.indexOf(account.commitment, (a, b) =>
-      a.eq(b),
-    )
-    if (accountIndex === -1) {
-      throw new Error(
-        'The accounts tree does not contain such account commitment',
-      )
-    }
-    const accountPath = accountTree.path(accountIndex)
-    const accountTreeUpdate = this._updateTree(
-      accountTree,
-      newAccount.commitment,
-    )
-
-    const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
-    const extDataHash = getExtWithdrawArgsHash({
-      fee,
-      recipient,
-      relayer,
-      encryptedAccount,
-    })
-
-    const input = {
-      amount,
-      debt,
-      unitPerUnderlying,
-      extDataHash,
-
-      inputAmount: account.amount,
-      inputDebt: account.debt,
-      inputSecret: account.secret,
-      inputNullifier: account.nullifier,
-      inputNullifierHash: account.nullifierHash,
-      inputRoot: accountTreeUpdate.oldRoot,
-      inputPathIndices: bitsToNumber(accountPath.pathIndices),
-      inputPathElements: accountPath.pathElements,
-
-      outputAmount: newAccount.amount,
-      outputDebt: newAccount.debt,
-      outputSecret: newAccount.secret,
-      outputNullifier: newAccount.nullifier,
-      outputRoot: accountTreeUpdate.newRoot,
-      outputPathIndices: accountTreeUpdate.pathIndices,
-      outputPathElements: accountTreeUpdate.pathElements,
-      outputCommitment: newAccount.commitment,
-    }
-
-    const { proof: proofData } = await snarkjs.plonk.fullProve(
-      utils.stringifyBigInts(input),
-      this.provingKeys.withdrawWasm,
-      this.provingKeys.withdrawZkey,
-    )
-
-    const [proof] = (
-      await snarkjs.plonk.exportSolidityCallData(
-        utils.unstringifyBigInts(proofData),
-        [],
-      )
-    ).split(',')
-
-    const args = {
-      amount: toFixedHex(input.amount),
-      debt: toFixedHex(input.debt),
-      unitPerUnderlying: toFixedHex(input.unitPerUnderlying),
-      extDataHash: toFixedHex(input.extDataHash),
-      extData: {
-        fee: toFixedHex(fee),
         recipient: toFixedHex(recipient, 20),
-        relayer: toFixedHex(relayer, 20),
+        depositProofHash,
         encryptedAccount,
       },
       account: {

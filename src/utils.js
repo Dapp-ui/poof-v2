@@ -11,14 +11,7 @@ const DepositExtData = {
     encryptedAccount: 'bytes',
   },
 }
-const TransferExtData = {
-  TransferExtData: {
-    fee: 'uint256',
-    relayer: 'address',
-    depositProofHash: 'bytes32',
-    encryptedAccount: 'bytes',
-  },
-}
+
 const AccountUpdate = {
   AccountUpdate: {
     inputRoot: 'bytes32',
@@ -28,6 +21,7 @@ const AccountUpdate = {
     outputCommitment: 'bytes32',
   },
 }
+
 const DepositArgs = {
   DepositArgs: {
     rate: 'uint256',
@@ -47,6 +41,7 @@ const WithdrawExtData = {
     fee: 'uint256',
     recipient: 'address',
     relayer: 'address',
+    depositProofHash: 'bytes32',
     encryptedAccount: 'bytes',
   },
 }
@@ -102,33 +97,21 @@ function getExtDepositArgsHash({ encryptedAccount }) {
 }
 
 function getDepositProofHash(depositProof) {
+  if (!depositProof) {
+    return toFixedHex(0, 32)
+  }
   const encodedData = web3.eth.abi.encodeParameters(['bytes'], [depositProof])
   const hash = soliditySha3({ t: 'bytes', v: encodedData })
   return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
 }
 
-function getExtTransferArgsHash({
+function getExtWithdrawArgsHash({
   fee,
+  recipient,
   relayer,
   depositProofHash,
   encryptedAccount,
 }) {
-  const encodedData = web3.eth.abi.encodeParameters(
-    [TransferExtData],
-    [
-      {
-        fee: toFixedHex(fee, 32),
-        relayer: toFixedHex(relayer, 20),
-        depositProofHash,
-        encryptedAccount,
-      },
-    ],
-  )
-  const hash = soliditySha3({ t: 'bytes', v: encodedData })
-  return '0x00' + hash.slice(4) // cut last byte to make it 31 byte long to fit the snark field
-}
-
-function getExtWithdrawArgsHash({ fee, recipient, relayer, encryptedAccount }) {
   const encodedData = web3.eth.abi.encodeParameters(
     [WithdrawExtData],
     [
@@ -136,6 +119,7 @@ function getExtWithdrawArgsHash({ fee, recipient, relayer, encryptedAccount }) {
         fee: toFixedHex(fee, 32),
         recipient: toFixedHex(recipient, 20),
         relayer: toFixedHex(relayer, 20),
+        depositProofHash,
         encryptedAccount,
       },
     ],
@@ -218,7 +202,6 @@ module.exports = {
   bitsToNumber,
   getExtDepositArgsHash,
   getDepositProofHash,
-  getExtTransferArgsHash,
   getExtWithdrawArgsHash,
   packEncryptedMessage,
   unpackEncryptedMessage,

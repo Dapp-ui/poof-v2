@@ -54,26 +54,11 @@ contract Poof {
     AccountUpdate account;
   }
 
-  struct TransferExtData {
-    uint256 fee;
-    address relayer;
-    bytes32 depositProofHash;
-    bytes encryptedAccount;
-  }
-
-  struct TransferArgs {
-    uint256 amount;
-    uint256 debt;
-    uint256 unitPerUnderlying;
-    bytes32 extDataHash;
-    TransferExtData extData;
-    AccountUpdate account;
-  }
-
   struct WithdrawExtData {
     uint256 fee;
     address recipient;
     address relayer;
+    bytes32 depositProofHash;
     bytes encryptedAccount;
   }
 
@@ -116,7 +101,7 @@ contract Poof {
 
   function transfer(
     bytes memory _fromProof,
-    TransferArgs memory _fromArgs,
+    WithdrawArgs memory _fromArgs,
     bytes memory _toProof,
     DepositArgs memory _toArgs,
     bytes memory _fromTreeUpdateProof,
@@ -131,38 +116,7 @@ contract Poof {
     beforeDeposit(_toProof, _toArgs, _toTreeUpdateProof, _toTreeUpdateArgs);
 
     // Validate and update the `from` account
-    validateAccountUpdate(_fromArgs.account, _fromTreeUpdateProof, _fromTreeUpdateArgs);
-    require(_fromArgs.extDataHash == keccak248(abi.encode(_fromArgs.extData)), "Incorrect 'from' external data hash");
-    require(_fromArgs.amount < 2**248, "Amount value out of range");
-    require(_fromArgs.amount >= _fromArgs.extData.fee, "Amount should be >= than fee");
-    require(_fromArgs.unitPerUnderlying >= unitPerUnderlying(), "Underlying per unit is overstated");
-    require(
-      withdrawVerifier.verifyProof(
-        _fromProof,
-        toDynamicArray([
-          uint256(_fromArgs.amount),
-          uint256(_fromArgs.debt),
-          uint256(_fromArgs.unitPerUnderlying),
-          uint256(_fromArgs.extDataHash),
-          uint256(_fromArgs.account.inputRoot),
-          uint256(_fromArgs.account.inputNullifierHash),
-          uint256(_fromArgs.account.outputRoot),
-          uint256(_fromArgs.account.outputPathIndices),
-          uint256(_fromArgs.account.outputCommitment)
-        ])
-      ),
-      "Invalid withdrawal proof"
-    );
-
-    accountNullifiers[_fromArgs.account.inputNullifierHash] = true;
-    insertAccountRoot(_fromArgs.account.inputRoot == getLastAccountRoot() ? _fromArgs.account.outputRoot : _fromTreeUpdateArgs.newRoot);
-
-    emit NewAccount(
-      _fromArgs.account.outputCommitment,
-      _fromArgs.account.inputNullifierHash,
-      _fromArgs.extData.encryptedAccount,
-      accountCount - 1
-    );
+    beforeWithdraw(_fromProof, _fromArgs, _fromTreeUpdateProof, _fromTreeUpdateArgs);
 
     if (_fromArgs.extData.fee > 0) {
       token.safeTransfer(_fromArgs.extData.relayer, _fromArgs.extData.fee);
@@ -276,6 +230,7 @@ contract Poof {
     TreeUpdateArgs memory _treeUpdateArgs
   ) public virtual {
     beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    require(_args.extData.depositProofHash == bytes32(0), "`depositProofHash` should be zeroed");
     uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
     if (amount > 0) {
       token.safeTransfer(_args.extData.recipient, amount);
