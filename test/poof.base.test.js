@@ -460,7 +460,7 @@ contract('Poof', (accounts) => {
     })
   })
 
-  describe('#transfer', () => {
+  describe.only('#transfer', () => {
     let fromAccount
     beforeEach(async () => {
       const zeroAccount = new Account()
@@ -669,7 +669,7 @@ contract('Poof', (accounts) => {
       )
     })
 
-    it('should reject with incorrect external data hash', async () => {
+    it.only('should reject with incorrect external data hash', async () => {
       const toAccount = new Account()
       const { proof: toProof, args: toArgs } = await controller.deposit({
         account: toAccount,
@@ -707,7 +707,7 @@ contract('Poof', (accounts) => {
           toTreeUpdateProof,
           toTreeUpdateArgs,
         )
-        .should.be.rejectedWith("Incorrect 'from' external data hash")
+        .should.be.rejectedWith("Incorrect external data hash")
       malformedArgs.extDataHash = toFixedHex('0x00')
       await poof
         .transfer(
@@ -720,7 +720,7 @@ contract('Poof', (accounts) => {
           toTreeUpdateProof,
           toTreeUpdateArgs,
         )
-        .should.be.rejectedWith("Incorrect 'from' external data hash")
+        .should.be.rejectedWith("Incorrect external data hash")
 
       await poof.transfer(
         fromProof,

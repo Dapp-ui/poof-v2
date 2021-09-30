@@ -119,7 +119,7 @@ function getExtWithdrawArgsHash({
         fee: toFixedHex(fee, 32),
         recipient: toFixedHex(recipient, 20),
         relayer: toFixedHex(relayer, 20),
-        depositProofHash,
+        depositProofHash: depositProofHash || toFixedHex(0, 32),
         encryptedAccount,
       },
     ],
