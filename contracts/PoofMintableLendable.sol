@@ -33,8 +33,8 @@ contract PoofMintableLendable is PoofLendable, ERC20 {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
-    require(_args.amount == 0, "Cannot use amount for burning");
     beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    require(_args.amount == 0, "Cannot use amount for burning");
     _burn(msg.sender, _args.debt);
   }
 
@@ -48,14 +48,15 @@ contract PoofMintableLendable is PoofLendable, ERC20 {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
+    beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
     require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
     require(_args.extData.depositProofHash == bytes32(0), "depositProofHash should be 0 for minting");
-    beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);
     if (_args.debt > 0) {
       _mint(_args.extData.recipient, _args.debt);
     }
-    if (_args.extData.fee > 0) {
-      token.safeTransfer(_args.extData.relayer, _args.extData.fee);
+    if (underlyingFeeAmount > 0) {
+      underlyingToken.safeTransfer(_args.extData.relayer, underlyingFeeAmount);
     }
   }
 
