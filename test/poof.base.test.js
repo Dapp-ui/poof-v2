@@ -460,7 +460,7 @@ contract('Poof', (accounts) => {
     })
   })
 
-  describe.only('#transfer', () => {
+  describe('#transfer', () => {
     let fromAccount
     beforeEach(async () => {
       const zeroAccount = new Account()
@@ -669,7 +669,7 @@ contract('Poof', (accounts) => {
       )
     })
 
-    it.only('should reject with incorrect external data hash', async () => {
+    it('should reject with incorrect external data hash', async () => {
       const toAccount = new Account()
       const { proof: toProof, args: toArgs } = await controller.deposit({
         account: toAccount,
