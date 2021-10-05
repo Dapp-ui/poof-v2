@@ -85,7 +85,8 @@ contract Poof {
 
   function toDynamicArray(uint256[4] memory arr) internal pure returns (uint256[] memory) {
     uint256[] memory res = new uint256[](4);
-    for (uint i = 0; i < arr.length; i++) {
+    uint256 length = arr.length;
+    for (uint i = 0; i < length; i++) {
       res[i] = arr[i];
     }
     return res;
@@ -93,7 +94,8 @@ contract Poof {
 
   function toDynamicArray(uint256[9] memory arr) internal pure returns (uint256[] memory) {
     uint256[] memory res = new uint256[](9);
-    for (uint i = 0; i < arr.length; i++) {
+    uint256 length = arr.length;
+    for (uint i = 0; i < length; i++) {
       res[i] = arr[i];
     }
     return res;
@@ -109,7 +111,7 @@ contract Poof {
     bytes memory _toTreeUpdateProof,
     TreeUpdateArgs memory _toTreeUpdateArgs
   ) external {
-    require(_fromArgs.amount - _fromArgs.extData.fee == _toArgs.amount, "Transfer is unfair");
+    require(_fromArgs.amount - _fromArgs.extData.fee == _toArgs.amount, "'from' transfer amount does not equal the 'to' transfer amount");
     require(_fromArgs.extData.depositProofHash == keccak248(abi.encode(_toProof)), "'from' proof hash does not match 'to' proof hash");
 
     // Validate and update the `to` account
