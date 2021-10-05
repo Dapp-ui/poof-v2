@@ -312,8 +312,9 @@ contract('PoofMintableLendable', (accounts) => {
       recipientBalanceAfter.should.be.eq.BN(
         recipientBalanceBefore.add(debt.sub(fee)),
       )
+      // fee is in units, so we divide it to get underlying
       relayerBalanceAfter.should.be.eq.BN(
-        relayerBalanceBefore.add(fee.div(toBN(2))), // fee is in units, so we divide it to get underlying
+        relayerBalanceBefore.add(fee.div(toBN(2))),
       )
     })
   })
@@ -333,7 +334,7 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(2),
-        recipient,
+        recipient: sender,
         publicKey,
       }))
       await poof.mint(proof, args)
@@ -344,7 +345,6 @@ contract('PoofMintableLendable', (accounts) => {
         account,
         amount,
         unitPerUnderlying: toBN(2),
-        recipient,
         publicKey,
       })
       await poof
@@ -359,7 +359,6 @@ contract('PoofMintableLendable', (accounts) => {
           amount: toBN(0),
           debt: debt.add(toBN(1)),
           unitPerUnderlying: toBN(2),
-          recipient,
           publicKey,
         })
         .should.be.rejectedWith('Cannot create an account with negative debt')
@@ -371,7 +370,6 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(1),
-        recipient,
         publicKey,
       })
       await poof
@@ -385,12 +383,11 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(2),
-        recipient,
         publicKey,
       })
-      let balanceBefore = await poof.balanceOf(recipient)
+      let balanceBefore = await poof.balanceOf(sender)
       await poof.burn(burnSnark.proof, burnSnark.args)
-      let balanceAfter = await poof.balanceOf(recipient)
+      let balanceAfter = await poof.balanceOf(sender)
       balanceBefore.should.be.eq.BN(balanceAfter.add(debt))
 
       const withdrawSnark = await controller.withdraw({
