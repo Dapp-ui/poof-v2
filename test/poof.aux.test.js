@@ -229,7 +229,7 @@ contract('PoofMintableLendable', (accounts) => {
         account,
         amount,
         unitPerUnderlying: toBN(2),
-        recipient: sender,
+        recipient,
         publicKey,
       })
       await poof
@@ -244,7 +244,7 @@ contract('PoofMintableLendable', (accounts) => {
           amount: toBN(0),
           debt: debt.add(toBN(1)),
           unitPerUnderlying: toBN(2),
-          recipient: sender,
+          recipient,
           publicKey,
         })
         .should.be.rejectedWith('T Polynomial is not divisible')
@@ -256,7 +256,7 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt: debt.add(toBN(1)),
         unitPerUnderlying: toBN(1),
-        recipient: sender,
+        recipient,
         publicKey,
       })
       await poof
@@ -270,12 +270,12 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(2),
-        recipient: sender,
+        recipient,
         publicKey,
       })
-      let balanceBefore = await poof.balanceOf(sender)
+      let balanceBefore = await poof.balanceOf(recipient)
       await poof.mint(mintSnark.proof, mintSnark.args)
-      let balanceAfter = await poof.balanceOf(sender)
+      let balanceAfter = await poof.balanceOf(recipient)
       balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
 
       await controller
@@ -283,7 +283,7 @@ contract('PoofMintableLendable', (accounts) => {
           account: mintSnark.account,
           amount: toBN(1),
           unitPerUnderlying: toBN(2),
-          recipient: sender,
+          recipient,
           publicKey,
         })
         .should.be.rejectedWith('T Polynomial is not divisible')
@@ -305,7 +305,7 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(2),
-        recipient: sender,
+        recipient,
         publicKey,
       }))
       await poof.mint(proof, args)
@@ -316,7 +316,7 @@ contract('PoofMintableLendable', (accounts) => {
         account,
         amount,
         unitPerUnderlying: toBN(2),
-        recipient: sender,
+        recipient,
         publicKey,
       })
       await poof
@@ -331,7 +331,7 @@ contract('PoofMintableLendable', (accounts) => {
           amount: toBN(0),
           debt: debt.add(toBN(1)),
           unitPerUnderlying: toBN(2),
-          recipient: sender,
+          recipient,
           publicKey,
         })
         .should.be.rejectedWith('Cannot create an account with negative debt')
@@ -343,7 +343,7 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(1),
-        recipient: sender,
+        recipient,
         publicKey,
       })
       await poof
@@ -357,24 +357,24 @@ contract('PoofMintableLendable', (accounts) => {
         amount: toBN(0),
         debt,
         unitPerUnderlying: toBN(2),
-        recipient: sender,
+        recipient,
         publicKey,
       })
-      let balanceBefore = await poof.balanceOf(sender)
+      let balanceBefore = await poof.balanceOf(recipient)
       await poof.burn(burnSnark.proof, burnSnark.args)
-      let balanceAfter = await poof.balanceOf(sender)
+      let balanceAfter = await poof.balanceOf(recipient)
       balanceBefore.should.be.eq.BN(balanceAfter.add(debt))
 
       const withdrawSnark = await controller.withdraw({
         account: burnSnark.account,
         amount,
         unitPerUnderlying: toBN(2),
-        recipient: sender,
+        recipient,
         publicKey,
       })
-      balanceBefore = await uToken.balanceOf(sender)
+      balanceBefore = await uToken.balanceOf(recipient)
       await poof.withdraw(withdrawSnark.proof, withdrawSnark.args)
-      balanceAfter = await uToken.balanceOf(sender)
+      balanceAfter = await uToken.balanceOf(recipient)
       // `amount` is denominated in dToken which trades at 2:1 with uToken
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount.div(toBN(2))))
     })
