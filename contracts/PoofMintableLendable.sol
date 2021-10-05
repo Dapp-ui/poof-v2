@@ -52,6 +52,8 @@ contract PoofMintableLendable is PoofLendable, ERC20 {
     require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
     require(_args.extData.depositProofHash == bytes32(0), "depositProofHash should be 0 for minting");
     uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);
+    debtToken.unwrap(_args.amount);
+
     if (_args.debt > 0) {
       _mint(_args.extData.recipient, _args.debt);
     }

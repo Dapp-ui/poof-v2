@@ -42,6 +42,7 @@ contract('PoofMintableLendable', (accounts) => {
   // eslint-disable-next-line no-unused-vars
   const sender = accounts[0]
   const recipient = accounts[1]
+  const relayer = accounts[2]
   // eslint-disable-next-line no-unused-vars
   const merkleTreeHeight = 3
   let snapshotId
@@ -287,6 +288,33 @@ contract('PoofMintableLendable', (accounts) => {
           publicKey,
         })
         .should.be.rejectedWith('T Polynomial is not divisible')
+    })
+
+    it('should send fee to relayer', async () => {
+      const fee = toBN(3)
+      const mintSnark = await controller.withdraw({
+        account,
+        amount: toBN(0),
+        debt: debt.sub(fee),
+        unitPerUnderlying: toBN(2),
+        recipient,
+        publicKey,
+        relayer,
+        fee,
+      })
+
+      const relayerBalanceBefore = await uToken.balanceOf(relayer)
+      const recipientBalanceBefore = await poof.balanceOf(recipient)
+      await poof.mint(mintSnark.proof, mintSnark.args)
+      const recipientBalanceAfter = await poof.balanceOf(recipient)
+      const relayerBalanceAfter = await uToken.balanceOf(relayer)
+
+      recipientBalanceAfter.should.be.eq.BN(
+        recipientBalanceBefore.add(debt.sub(fee)),
+      )
+      relayerBalanceAfter.should.be.eq.BN(
+        relayerBalanceBefore.add(fee.div(toBN(2))), // fee is in units, so we divide it to get underlying
+      )
     })
   })
 
