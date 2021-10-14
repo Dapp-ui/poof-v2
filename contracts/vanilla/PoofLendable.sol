@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./Poof.sol";
-import "./interfaces/IVerifier.sol";
-import "./interfaces/IWERC20.sol";
+import "./../interfaces/IVerifier.sol";
+import "./../interfaces/IWERC20.sol";
 
 contract PoofLendable is Poof {
   using SafeMath for uint256;
