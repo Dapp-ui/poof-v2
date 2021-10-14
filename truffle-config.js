@@ -52,6 +52,26 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('100', 'gwei'),
     },
+    fantom: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: 'https://rpc.ftm.tools/',
+        }),
+      network_id: 250,
+      gas: 6000000,
+      gasPrice: toWei('100', 'gwei'),
+    },
+    fantomtest: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: 'https://rpc.testnet.fantom.network',
+        }),
+      network_id: 4002,
+      gas: 6000000,
+      gasPrice: toWei('100', 'gwei'),
+    },
     amainnet: {
       provider: () =>
         new HDWalletProvider({
