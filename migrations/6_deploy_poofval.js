@@ -24,7 +24,7 @@ module.exports = function (deployer, network) {
 
       await deployer.deploy(
         PoofValMintable,
-        'Poof',
+        isFantom ? 'Poof FTM' : 'Poof ETH',
         isFantom ? 'pFTM' : 'pETH',
         [
           depositVerifier.address,
