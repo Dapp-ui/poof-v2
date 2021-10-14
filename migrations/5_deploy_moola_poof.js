@@ -28,7 +28,7 @@ module.exports = function (deployer, network) {
 
       await deployer.deploy(
         PoofMintableLendable,
-        'Poof Interest Bearing CELO',
+        'Poof CELO',
         'pCELO',
         wmCELO.address,
         [
@@ -40,7 +40,7 @@ module.exports = function (deployer, network) {
       )
       await deployer.deploy(
         PoofMintableLendable,
-        'Poof Interest Bearing USD',
+        'Poof USD',
         'pUSD',
         wmcUSD.address,
         [
@@ -52,7 +52,7 @@ module.exports = function (deployer, network) {
       )
       await deployer.deploy(
         PoofMintableLendable,
-        'Poof Interest Bearing EUR',
+        'Poof EUR',
         'pEUR',
         wmcEUR.address,
         [
