@@ -15,8 +15,8 @@ const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
 
 module.exports = function (deployer, network) {
   return deployer.then(async () => {
-    const isFantom = ['emainnet', 'kovan'].includes(network)
-    const isEthereum = ['fantom', 'fantomtest'].includes(network)
+    const isEthereum = ['emainnet', 'kovan'].includes(network)
+    const isFantom = ['fantom', 'fantomtest'].includes(network)
     if (isFantom || isEthereum) {
       const depositVerifier = await DepositVerifier.deployed()
       const withdrawVerifier = await WithdrawVerifier.deployed()
