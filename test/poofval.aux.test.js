@@ -19,8 +19,8 @@ const {
 } = require('../src/utils')
 const { getEncryptionPublicKey } = require('eth-sig-util')
 const ERC20Mock = artifacts.require('ERC20Mock')
-const WERC20Mock = artifacts.require('WERC20Mock')
-const PoofValMintable = artifacts.require('PoofValMintable')
+const WERC20ValMock = artifacts.require('WERC20ValMock')
+const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
 const DepositVerifier = artifacts.require('DepositMiniVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawMiniVerifier')
 const TreeUpdateVerifier = artifacts.require('TreeUpdateMiniVerifier')
@@ -33,10 +33,10 @@ async function timeReset() {
   await mineBlock()
 }
 
-contract('PoofValMintable', (accounts) => {
+contract('PoofValMintableLendableLendable', (accounts) => {
   let poof
   const amount = toBN(16)
-  const debt = amount
+  const debt = amount.div(toBN(2))
   // eslint-disable-next-line no-unused-vars
   const sender = accounts[0]
   const recipient = accounts[1]
@@ -59,10 +59,11 @@ contract('PoofValMintable', (accounts) => {
     const withdrawVerifier = await WithdrawVerifier.new()
     const treeUpdateVerifier = await TreeUpdateVerifier.new()
     uToken = await ERC20Mock.new()
-    dToken = await WERC20Mock.new(uToken.address)
-    poof = await PoofValMintable.new(
+    dToken = await WERC20ValMock.new(uToken.address)
+    poof = await PoofValMintableLendable.new(
       'Poof ETH',
       'pETH',
+      dToken.address,
       [
         depositVerifier.address,
         withdrawVerifier.address,
@@ -110,14 +111,15 @@ contract('PoofValMintable', (accounts) => {
         account: zeroAccount,
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       })
       const balanceBefore = toBN(await web3.eth.getBalance(sender))
       const { logs } = await poof.deposit(proof, args, {
-        value: amount,
+        value: amount.div(toBN(2)),
         gasPrice: '0',
       })
       const balanceAfter = toBN(await web3.eth.getBalance(sender))
-      balanceBefore.should.be.eq.BN(balanceAfter.add(amount))
+      balanceBefore.should.be.eq.BN(balanceAfter.add(amount.div(toBN(2)))) // debtToken only takes half
 
       logs[0].event.should.be.equal('NewAccount')
       logs[0].args.commitment.should.be.equal(toFixedHex(account.commitment))
@@ -158,8 +160,12 @@ contract('PoofValMintable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       }))
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' })
+      await poof.deposit(proof, args, {
+        value: amount.div(toBN(2)),
+        gasPrice: '0',
+      })
     })
 
     it('should work', async () => {
@@ -171,6 +177,7 @@ contract('PoofValMintable', (accounts) => {
       const withdrawSnark = await controller.withdraw({
         account,
         amount,
+        unitPerUnderlying: toBN(2),
         recipient,
         publicKey,
       })
@@ -180,7 +187,7 @@ contract('PoofValMintable', (accounts) => {
         withdrawSnark.args,
       )
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
-      balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
+      balanceAfter.should.be.eq.BN(balanceBefore.add(amount.div(toBN(2)))) // Debt token only returns half
       const accountCountAfter = await poof.accountCount()
       accountCountAfter.should.be.eq.BN(accountCount.add(toBN(1)))
       const rootAfter = await poof.getLastAccountRoot()
@@ -215,14 +222,19 @@ contract('PoofValMintable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       }))
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' })
+      await poof.deposit(proof, args, {
+        value: amount.div(toBN(2)),
+        gasPrice: '0',
+      })
     })
 
     it('should fail if amount is != fee', async () => {
       const mintSnark = await controller.withdraw({
         account,
         amount,
+        unitPerUnderlying: toBN(2),
         recipient,
         publicKey,
       })
@@ -237,6 +249,7 @@ contract('PoofValMintable', (accounts) => {
           account,
           amount: toBN(0),
           debt: debt.add(toBN(1)),
+          unitPerUnderlying: toBN(2),
           recipient,
           publicKey,
         })
@@ -248,7 +261,7 @@ contract('PoofValMintable', (accounts) => {
         account,
         amount: toBN(0),
         debt: debt.add(toBN(1)),
-        unitPerUnderlying: toBN(0),
+        unitPerUnderlying: toBN(1),
         recipient,
         publicKey,
       })
@@ -262,6 +275,7 @@ contract('PoofValMintable', (accounts) => {
         account,
         amount: toBN(0),
         debt,
+        unitPerUnderlying: toBN(2),
         recipient,
         publicKey,
       })
@@ -274,6 +288,7 @@ contract('PoofValMintable', (accounts) => {
         .withdraw({
           account: mintSnark.account,
           amount: toBN(1),
+          unitPerUnderlying: toBN(2),
           recipient,
           publicKey,
         })
@@ -286,6 +301,7 @@ contract('PoofValMintable', (accounts) => {
         account,
         amount: toBN(0),
         debt: debt.sub(fee),
+        unitPerUnderlying: toBN(2),
         recipient,
         publicKey,
         relayer,
@@ -302,7 +318,9 @@ contract('PoofValMintable', (accounts) => {
         recipientBalanceBefore.add(debt.sub(fee)),
       )
       // fee is in units, so we divide it to get underlying
-      relayerBalanceAfter.should.be.eq.BN(relayerBalanceBefore.add(fee))
+      relayerBalanceAfter.should.be.eq.BN(
+        relayerBalanceBefore.add(fee.div(toBN(2))),
+      )
     })
   })
 
@@ -313,12 +331,14 @@ contract('PoofValMintable', (accounts) => {
         account: new Account(),
         publicKey,
         amount,
+        unitPerUnderlying: toBN(2),
       }))
       await poof.deposit(proof, args, { value: amount, gasPrice: '0' })
       ;({ proof, args, account } = await controller.withdraw({
         account,
         amount: toBN(0),
         debt,
+        unitPerUnderlying: toBN(2),
         recipient: sender,
         publicKey,
       }))
@@ -329,6 +349,7 @@ contract('PoofValMintable', (accounts) => {
       const burnSnark = await controller.deposit({
         account,
         amount,
+        unitPerUnderlying: toBN(2),
         publicKey,
       })
       await poof
@@ -342,6 +363,7 @@ contract('PoofValMintable', (accounts) => {
           account,
           amount: toBN(0),
           debt: debt.add(toBN(1)),
+          unitPerUnderlying: toBN(2),
           publicKey,
         })
         .should.be.rejectedWith('Cannot create an account with negative debt')
@@ -352,7 +374,7 @@ contract('PoofValMintable', (accounts) => {
         account,
         amount: toBN(0),
         debt,
-        unitPerUnderlying: toBN(0),
+        unitPerUnderlying: toBN(1),
         publicKey,
       })
       await poof
@@ -365,6 +387,7 @@ contract('PoofValMintable', (accounts) => {
         account,
         amount: toBN(0),
         debt,
+        unitPerUnderlying: toBN(2),
         publicKey,
       })
       let balanceBefore = await poof.balanceOf(sender)
@@ -375,6 +398,7 @@ contract('PoofValMintable', (accounts) => {
       const withdrawSnark = await controller.withdraw({
         account: burnSnark.account,
         amount,
+        unitPerUnderlying: toBN(2),
         recipient,
         publicKey,
       })
@@ -382,7 +406,7 @@ contract('PoofValMintable', (accounts) => {
       await poof.withdraw(withdrawSnark.proof, withdrawSnark.args)
       balanceAfter = toBN(await web3.eth.getBalance(recipient))
       // `amount` is denominated in dToken which trades at 2:1 with uToken
-      balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
+      balanceAfter.should.be.eq.BN(balanceBefore.add(amount.div(toBN(2))))
     })
   })
 
