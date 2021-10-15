@@ -2,9 +2,6 @@ require('dotenv').config()
 
 const MerkleTree = require('fixed-merkle-tree')
 
-const DepositVerifier = artifacts.require('DepositVerifier')
-const WithdrawVerifier = artifacts.require('WithdrawVerifier')
-const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
 const WGFTM = artifacts.require('wgFTM')
 const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
 
@@ -17,14 +14,12 @@ const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
 module.exports = function (deployer, network) {
   return deployer.then(async () => {
     if (['fantom'].includes(network)) {
-      const depositVerifier = await DepositVerifier.deployed()
-      const withdrawVerifier = await WithdrawVerifier.deployed()
-      const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
-      const wgFTM = await WGFTM.deploy(
-        '0x39b3bd37208cbade74d0fcbdbb12d606295b430a',
-        '0x9FAD24f572045c7869117160A571B2e50b10d068',
-        '0x47102245FEa0F8D35a6b28E54505e9FfD83d0704',
-        '0x21ff58441e39278cf73D71850093db06AD02F076',
+      const wgFTM = await deployer.deploy(
+        WGFTM,
+        '0x39b3bd37208cbade74d0fcbdbb12d606295b430a', // gFTM
+        '0x9FAD24f572045c7869117160A571B2e50b10d068', // lendingPool
+        '0x47102245FEa0F8D35a6b28E54505e9FfD83d0704', // wethGateway
+        '0x21ff58441e39278cf73D71850093db06AD02F076', // feeToSetter
       )
 
       await deployer.deploy(
@@ -33,9 +28,9 @@ module.exports = function (deployer, network) {
         'pgFTM',
         wgFTM.address,
         [
-          depositVerifier.address,
-          withdrawVerifier.address,
-          treeUpdateVerifier.address,
+          '0x64c895915AbFdc7BE9Fd834fE4b10d3a8f19cF62', // DepositVerifier
+          '0xEDf1B63354634835A8C856682c05aB20292f0cfc', // WithdrawVerifier
+          '0xb48Be19dD3c46227D16EdC5eEfb363516D5Ab6B3', // TreeUpdateVerifier
         ],
         toFixedHex(emptyTree.root()),
       )
