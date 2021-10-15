@@ -13,7 +13,7 @@
   "scripts": {
     "compile": "truffle compile",
     "test": "truffle test",
-    "test:abridged": "truffle test --grep=\"should work\" test/poof.base.test.js test/poof.aux.test.js test/poofval.base.test.js test/poofval.aux.test.js && truffle test test/feeBase.test.js test/wrappedCToken.test.js test/wrappedMToken.test.js",
+    "test:abridged": "truffle test --grep=\"should work\" test/poof.base.test.js test/poof.aux.test.js test/poofval.base.test.js test/poofval.aux.test.js && truffle test test/feeBase.test.js test/wrappedCToken.test.js test/wrappedMToken.test.js test/wrappedGToken.test.js",
     "prettier:check": "prettier --check . --config .prettierrc",
     "prettier:fix": "prettier --write . --config .prettierrc",
     "circuit:deposit": "scripts/buildCircuit.sh Deposit",
