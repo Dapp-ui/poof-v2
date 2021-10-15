@@ -24,7 +24,7 @@
     "circuit:treeUpdateMini": "scripts/buildCircuit.sh TreeUpdateMini",
     "circuit:mini": "yarn circuit:depositMini && yarn circuit:withdrawMini && yarn circuit:treeUpdateMini",
     "circuit": "mkdir -p build/circuits && yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:treeUpdate && yarn circuit:mini",
-    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send .",
+    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send --filter-paths=WrappedGToken.sol .",
     "postinstall": "yarn circuit"
   },
   "devDependencies": {

@@ -6,12 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../FeeBase.sol";
 import "../../interfaces/IWETHGateway.sol";
 import "../../interfaces/IWERC20Val.sol";
 
-contract WrappedGToken is ERC20, FeeBase, IWERC20Val {
+contract WrappedGToken is ERC20, FeeBase, IWERC20Val, ReentrancyGuard {
   using SafeERC20 for IERC20;
   using SafeMath for uint256;
 
@@ -78,7 +79,7 @@ contract WrappedGToken is ERC20, FeeBase, IWERC20Val {
     }
   }
 
-  function wrap() external payable override {
+  function wrap() external payable nonReentrant override {
     uint256 underlyingAmount = msg.value;
     require(underlyingAmount > 0, "underlyingAmount cannot be 0");
     uint256 toMint = underlyingToDebt(underlyingAmount);
