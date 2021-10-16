@@ -99,6 +99,11 @@ module.exports = {
     // timeout: 100000
   },
 
+  plugins: ['truffle-plugin-verify'],
+  api_keys: {
+    ftmscan: process.env.FTMSCAN_API_KEY
+  },
+
   // Configure your compilers
   compilers: {
     solc: {
