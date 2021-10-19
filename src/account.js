@@ -8,8 +8,10 @@ class Account {
     this.debt = debt ? toBN(debt) : toBN('0')
     this.secret = secret ? toBN(secret) : randomBN(31)
     this.nullifier = nullifier ? toBN(nullifier) : randomBN(31)
+    this.salt = randomBN(31)
 
     this.commitment = poseidonHash([this.amount, this.debt, this.secret, this.nullifier])
+    this.accountHash = poseidonHash([this.amount, this.debt, this.secret, this.nullifier, this.salt])
     this.nullifierHash = poseidonHash([this.nullifier])
 
     if (this.amount.lt(toBN(0))) {

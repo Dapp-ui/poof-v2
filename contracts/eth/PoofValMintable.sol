@@ -17,38 +17,37 @@ contract PoofValMintable is PoofVal, ERC20 {
   constructor(
     string memory _tokenName,
     string memory _tokenSymbol,
-    IVerifier[3] memory _verifiers,
+    IVerifier[5] memory _verifiers,
     bytes32 _accountRoot
   ) ERC20(_tokenName, _tokenSymbol) PoofVal(_verifiers, _accountRoot) {}
 
-  function burn(bytes memory _proof, DepositArgs memory _args) external {
-    burn(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function burn(bytes[3] memory _proofs, DepositArgs memory _args) external {
+    burn(_proofs, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function burn(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     DepositArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
     require(_args.amount == 0, "Cannot use amount for burning");
-    beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    beforeDeposit(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     _burn(msg.sender, _args.debt);
   }
 
-  function mint(bytes memory _proof, WithdrawArgs memory _args) external {
-    mint(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function mint(bytes[3] memory _proofs, WithdrawArgs memory _args) external {
+    mint(_proofs, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function mint(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     WithdrawArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
     require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
-    require(_args.extData.depositProofHash == bytes32(0), "depositProofHash should be 0 for minting");
-    beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    beforeWithdraw(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     if (_args.debt > 0) {
       _mint(_args.extData.recipient, _args.debt);
     }

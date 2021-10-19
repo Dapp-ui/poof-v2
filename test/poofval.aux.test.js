@@ -23,6 +23,8 @@ const WERC20ValMock = artifacts.require('WERC20ValMock')
 const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
 const DepositVerifier = artifacts.require('DepositMiniVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawMiniVerifier')
+const InputRootVerifier = artifacts.require('InputRootMiniVerifier')
+const OutputRootVerifier = artifacts.require('OutputRootMiniVerifier')
 const TreeUpdateVerifier = artifacts.require('TreeUpdateMiniVerifier')
 const MerkleTree = require('fixed-merkle-tree')
 
@@ -57,6 +59,8 @@ contract('PoofValMintableLendableLendable', (accounts) => {
   before(async () => {
     const depositVerifier = await DepositVerifier.new()
     const withdrawVerifier = await WithdrawVerifier.new()
+    const inputRootVerifier = await InputRootVerifier.new()
+    const outputRootVerifier = await OutputRootVerifier.new()
     const treeUpdateVerifier = await TreeUpdateVerifier.new()
     uToken = await ERC20Mock.new()
     dToken = await WERC20ValMock.new(uToken.address)
@@ -67,6 +71,8 @@ contract('PoofValMintableLendableLendable', (accounts) => {
       [
         depositVerifier.address,
         withdrawVerifier.address,
+        inputRootVerifier.address,
+        outputRootVerifier.address,
         treeUpdateVerifier.address,
       ],
       toFixedHex(emptyTree.root()),
@@ -82,6 +88,14 @@ contract('PoofValMintableLendableLendable', (accounts) => {
       withdrawWasm: fs.readFileSync('./build/circuits/WithdrawMini.wasm'),
       withdrawZkey: fs.readFileSync(
         './build/circuits/WithdrawMini_circuit_final.zkey',
+      ),
+      inputRootWasm: fs.readFileSync('./build/circuits/InputRootMini.wasm'),
+      inputRootZkey: fs.readFileSync(
+        './build/circuits/InputRootMini_circuit_final.zkey',
+      ),
+      outputRootWasm: fs.readFileSync('./build/circuits/OutputRootMini.wasm'),
+      outputRootZkey: fs.readFileSync(
+        './build/circuits/OutputRootMini_circuit_final.zkey',
       ),
       treeUpdateWasm: fs.readFileSync('./build/circuits/TreeUpdateMini.wasm'),
       treeUpdateZkey: fs.readFileSync(
@@ -107,14 +121,14 @@ contract('PoofValMintableLendableLendable', (accounts) => {
 
       zeroAccount.amount.should.be.eq.BN(toBN(0))
 
-      const { proof, args, account } = await controller.deposit({
+      const { proofs, args, account } = await controller.deposit({
         account: zeroAccount,
         publicKey,
         amount,
         unitPerUnderlying: toBN(2),
       })
       const balanceBefore = toBN(await web3.eth.getBalance(sender))
-      const { logs } = await poof.deposit(proof, args, {
+      const { logs } = await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, {
         value: amount.div(toBN(2)),
         gasPrice: '0',
       })
@@ -153,16 +167,16 @@ contract('PoofValMintableLendableLendable', (accounts) => {
   })
 
   describe('#withdraw', () => {
-    let proof, args, account
+    let proofs, args, account
 
     beforeEach(async () => {
-      ;({ proof, args, account } = await controller.deposit({
+      ; ({ proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
         unitPerUnderlying: toBN(2),
       }))
-      await poof.deposit(proof, args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, {
         value: amount.div(toBN(2)),
         gasPrice: '0',
       })
@@ -183,7 +197,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
       })
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
       const { logs } = await poof.withdraw(
-        withdrawSnark.proof,
+        withdrawSnark.proofs,
         withdrawSnark.args,
       )
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
@@ -215,16 +229,16 @@ contract('PoofValMintableLendableLendable', (accounts) => {
   })
 
   describe('#mint', () => {
-    let proof, args, account
+    let proofs, args, account
 
     beforeEach(async () => {
-      ;({ proof, args, account } = await controller.deposit({
+      ; ({ proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
         unitPerUnderlying: toBN(2),
       }))
-      await poof.deposit(proof, args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, {
         value: amount.div(toBN(2)),
         gasPrice: '0',
       })
@@ -239,7 +253,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       await poof
-        .mint(mintSnark.proof, mintSnark.args)
+        .mint(mintSnark.proofs, mintSnark.args)
         .should.be.rejectedWith('Amount can only be used for fee')
     })
 
@@ -266,7 +280,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       await poof
-        .mint(mintSnark.proof, mintSnark.args)
+        .mint(mintSnark.proofs, mintSnark.args)
         .should.be.rejectedWith('Underlying per unit is overstated')
     })
 
@@ -280,7 +294,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       let balanceBefore = await poof.balanceOf(recipient)
-      await poof.mint(mintSnark.proof, mintSnark.args)
+      await poof.mint(mintSnark.proofs, mintSnark.args)
       let balanceAfter = await poof.balanceOf(recipient)
       balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
 
@@ -310,7 +324,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
 
       const relayerBalanceBefore = toBN(await web3.eth.getBalance(relayer))
       const recipientBalanceBefore = await poof.balanceOf(recipient)
-      await poof.mint(mintSnark.proof, mintSnark.args)
+      await poof.mint(mintSnark.proofs, mintSnark.args)
       const recipientBalanceAfter = await poof.balanceOf(recipient)
       const relayerBalanceAfter = toBN(await web3.eth.getBalance(relayer))
 
@@ -325,24 +339,24 @@ contract('PoofValMintableLendableLendable', (accounts) => {
   })
 
   describe('#burn', () => {
-    let proof, args, account
+    let proofs, args, account
     beforeEach(async () => {
-      ;({ proof, args, account } = await controller.deposit({
+      ; ({ proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
         unitPerUnderlying: toBN(2),
       }))
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' })
-      ;({ proof, args, account } = await controller.withdraw({
-        account,
-        amount: toBN(0),
-        debt,
-        unitPerUnderlying: toBN(2),
-        recipient: sender,
-        publicKey,
-      }))
-      await poof.mint(proof, args)
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, { value: amount, gasPrice: '0' })
+        ; ({ proofs, args, account } = await controller.withdraw({
+          account,
+          amount: toBN(0),
+          debt,
+          unitPerUnderlying: toBN(2),
+          recipient: sender,
+          publicKey,
+        }))
+      await poof.mint(proofs, args)
     })
 
     it('should fail if amount is > 0', async () => {
@@ -353,7 +367,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       await poof
-        .burn(burnSnark.proof, burnSnark.args)
+        .burn(burnSnark.proofs, burnSnark.args)
         .should.be.rejectedWith('Cannot use amount for burning')
     })
 
@@ -378,7 +392,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       await poof
-        .burn(burnSnark.proof, burnSnark.args)
+        .burn(burnSnark.proofs, burnSnark.args)
         .should.be.rejectedWith('Underlying per unit is overstated')
     })
 
@@ -391,7 +405,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       let balanceBefore = await poof.balanceOf(sender)
-      await poof.burn(burnSnark.proof, burnSnark.args)
+      await poof.burn(burnSnark.proofs, burnSnark.args)
       let balanceAfter = await poof.balanceOf(sender)
       balanceBefore.should.be.eq.BN(balanceAfter.add(debt))
 
@@ -403,7 +417,7 @@ contract('PoofValMintableLendableLendable', (accounts) => {
         publicKey,
       })
       balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(withdrawSnark.proof, withdrawSnark.args)
+      await poof.withdraw(withdrawSnark.proofs, withdrawSnark.args)
       balanceAfter = toBN(await web3.eth.getBalance(recipient))
       // `amount` is denominated in dToken which trades at 2:1 with uToken
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount.div(toBN(2))))

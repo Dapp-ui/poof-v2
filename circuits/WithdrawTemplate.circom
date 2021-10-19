@@ -16,19 +16,15 @@ template Withdraw(levels, zeroLeaf) {
   signal private input inputDebt;
   signal private input inputSecret;
   signal private input inputNullifier;
-  signal         input inputRoot;
-  signal private input inputPathIndices;
-  signal private input inputPathElements[levels];
-  signal         input inputNullifierHash;
+  signal private input inputSalt;
+  signal         input inputAccountHash;
 
   signal private input outputAmount;
   signal private input outputDebt;
   signal private input outputSecret;
   signal private input outputNullifier;
-  signal         input outputRoot;
-  signal         input outputPathIndices;
-  signal private input outputPathElements[levels];
-  signal         input outputCommitment;
+  signal private input outputSalt;
+  signal         input outputAccountHash;
 
   // Verify amount and debt invariant
   inputAmount === outputAmount + amount;
@@ -45,44 +41,23 @@ template Withdraw(levels, zeroLeaf) {
   inputAmountCheck.in <== inputAmount;
   outputAmountCheck.in <== outputAmount;
 
-  // Compute input commitment
-  component inputHasher = Poseidon(4);
-  inputHasher.inputs[0] <== inputAmount;
-  inputHasher.inputs[1] <== inputDebt;
-  inputHasher.inputs[2] <== inputSecret;
-  inputHasher.inputs[3] <== inputNullifier;
+  // Check input account hash
+  component inputAccountHasher = Poseidon(5);
+  inputAccountHasher.inputs[0] <== inputAmount;
+  inputAccountHasher.inputs[1] <== inputDebt;
+  inputAccountHasher.inputs[2] <== inputSecret;
+  inputAccountHasher.inputs[3] <== inputNullifier;
+  inputAccountHasher.inputs[4] <== inputSalt;
+  inputAccountHasher.out === inputAccountHash;
 
-  // Verify that input commitment exists in the tree
-  component tree = MerkleTree(levels);
-  tree.leaf <== inputHasher.out;
-  tree.pathIndices <== inputPathIndices;
-  for (var i = 0; i < levels; i++) {
-    tree.pathElements[i] <== inputPathElements[i];
-  }
-  tree.root === inputRoot;
-
-  // Verify input nullifier hash
-  component nullifierHasher = Poseidon(1);
-  nullifierHasher.inputs[0] <== inputNullifier;
-  nullifierHasher.out === inputNullifierHash;
-
-  // Compute and verify output commitment
-  component outputHasher = Poseidon(4);
-  outputHasher.inputs[0] <== outputAmount;
-  outputHasher.inputs[1] <== outputDebt;
-  outputHasher.inputs[2] <== outputSecret;
-  outputHasher.inputs[3] <== outputNullifier;
-  outputHasher.out === outputCommitment;
-
-  // Update accounts tree with output account commitment
-  component treeUpdater = MerkleTreeUpdater(levels, zeroLeaf);
-  treeUpdater.oldRoot <== inputRoot;
-  treeUpdater.newRoot <== outputRoot;
-  treeUpdater.leaf <== outputCommitment;
-  treeUpdater.pathIndices <== outputPathIndices;
-  for (var i = 0; i < levels; i++) {
-      treeUpdater.pathElements[i] <== outputPathElements[i];
-  }
+  // Check output account hash
+  component outputAccountHasher = Poseidon(5);
+  outputAccountHasher.inputs[0] <== outputAmount;
+  outputAccountHasher.inputs[1] <== outputDebt;
+  outputAccountHasher.inputs[2] <== outputSecret;
+  outputAccountHasher.inputs[3] <== outputNullifier;
+  outputAccountHasher.inputs[4] <== outputSalt;
+  outputAccountHasher.out === outputAccountHash;
 
   // Add hidden signals to make sure that tampering with recipient or fee will invalidate the snark proof
   // Most likely it is not required, but it's better to stay on the safe side and it only takes 2 constraints

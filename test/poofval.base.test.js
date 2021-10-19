@@ -22,6 +22,8 @@ const { getEncryptionPublicKey } = require('eth-sig-util')
 const PoofVal = artifacts.require('PoofVal')
 const DepositVerifier = artifacts.require('DepositMiniVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawMiniVerifier')
+const InputRootVerifier = artifacts.require('InputRootMiniVerifier')
+const OutputRootVerifier = artifacts.require('OutputRootMiniVerifier')
 const TreeUpdateVerifier = artifacts.require('TreeUpdateMiniVerifier')
 const MerkleTree = require('fixed-merkle-tree')
 
@@ -55,11 +57,15 @@ contract('PoofVal', (accounts) => {
   before(async () => {
     const depositVerifier = await DepositVerifier.new()
     const withdrawVerifier = await WithdrawVerifier.new()
+    const inputRootVerifier = await InputRootVerifier.new()
+    const outputRootVerifier = await OutputRootVerifier.new()
     const treeUpdateVerifier = await TreeUpdateVerifier.new()
     poof = await PoofVal.new(
       [
         depositVerifier.address,
         withdrawVerifier.address,
+        inputRootVerifier.address,
+        outputRootVerifier.address,
         treeUpdateVerifier.address,
       ],
       toFixedHex(emptyTree.root()),
@@ -75,6 +81,14 @@ contract('PoofVal', (accounts) => {
       withdrawWasm: fs.readFileSync('./build/circuits/WithdrawMini.wasm'),
       withdrawZkey: fs.readFileSync(
         './build/circuits/WithdrawMini_circuit_final.zkey',
+      ),
+      inputRootWasm: fs.readFileSync('./build/circuits/InputRootMini.wasm'),
+      inputRootZkey: fs.readFileSync(
+        './build/circuits/InputRootMini_circuit_final.zkey',
+      ),
+      outputRootWasm: fs.readFileSync('./build/circuits/OutputRootMini.wasm'),
+      outputRootZkey: fs.readFileSync(
+        './build/circuits/OutputRootMini_circuit_final.zkey',
       ),
       treeUpdateWasm: fs.readFileSync('./build/circuits/TreeUpdateMini.wasm'),
       treeUpdateZkey: fs.readFileSync(
@@ -100,13 +114,13 @@ contract('PoofVal', (accounts) => {
 
       zeroAccount.amount.should.be.eq.BN(toBN(0))
 
-      const { proof, args, account } = await controller.deposit({
+      const { proofs, args, account } = await controller.deposit({
         account: zeroAccount,
         publicKey,
         amount,
       })
       const balanceBefore = toBN(await web3.eth.getBalance(sender))
-      const { logs } = await poof.deposit(proof, args, {
+      const { logs } = await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, {
         value: amount,
         gasPrice: '0',
       })
@@ -151,7 +165,7 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(deposit.proof, deposit.args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](deposit.proofs, deposit.args, {
         value: amount,
         gasPrice: '0',
       })
@@ -168,7 +182,7 @@ contract('PoofVal', (accounts) => {
 
       const relayerBalanceBefore = toBN(await web3.eth.getBalance(relayer))
       const recipientBalanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(withdrawal.proof, withdrawal.args)
+      await poof.withdraw(withdrawal.proofs, withdrawal.args)
       const recipientBalanceAfter = toBN(await web3.eth.getBalance(recipient))
       const relayerBalanceAfter = toBN(await web3.eth.getBalance(relayer))
 
@@ -179,7 +193,7 @@ contract('PoofVal', (accounts) => {
     })
 
     it('should use fallback with outdated tree', async () => {
-      const { proof, args } = await controller.deposit({
+      const { proofs, args } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -190,16 +204,16 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp.proof, tmp.args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp.proofs, tmp.args, { value: amount, gasPrice: '0' })
 
       await poof
-        .deposit(proof, args)
+        .deposit(proofs, args)
         .should.be.rejectedWith('Outdated account merkle root')
 
       const update = await controller.treeUpdate(args.account.outputCommitment)
       await poof.methods[
-        'deposit(bytes,(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,uint256,bytes32)),bytes,(bytes32,bytes32,bytes32,uint256))'
-      ](proof, args, update.proof, update.args, {
+        'deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)),bytes,(bytes32,bytes32,bytes32,uint256))'
+      ](proofs, args, update.proof, update.args, {
         value: amount,
         gasPrice: '0',
       })
@@ -213,9 +227,9 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp.proof, tmp.args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp.proofs, tmp.args, { value: amount, gasPrice: '0' })
 
-      const { proof, args } = await controller.deposit({
+      const { proofs, args } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -225,13 +239,13 @@ contract('PoofVal', (accounts) => {
       let fakeIndex = toBN(args.account.outputPathIndices).sub(toBN('1'))
       malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
       await poof
-        .deposit(proof, malformedArgs)
+        .deposit(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
 
       fakeIndex = toBN(args.account.outputPathIndices).add(toBN('1'))
       malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
       await poof
-        .deposit(proof, malformedArgs)
+        .deposit(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
 
       fakeIndex = toBN(args.account.outputPathIndices).add(
@@ -239,15 +253,15 @@ contract('PoofVal', (accounts) => {
       )
       malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
       await poof
-        .deposit(proof, malformedArgs)
+        .deposit(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
 
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' }).should
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, { value: amount, gasPrice: '0' }).should
         .be.fulfilled
     })
 
     it('should reject with incorrect external data hash', async () => {
-      const { proof, args } = await controller.deposit({
+      const { proofs, args } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -256,19 +270,19 @@ contract('PoofVal', (accounts) => {
 
       malformedArgs.extDataHash = toFixedHex('0xdeadbeef')
       await poof
-        .deposit(proof, malformedArgs)
+        .deposit(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
 
       malformedArgs.extDataHash = toFixedHex('0x00')
       await poof
-        .deposit(proof, malformedArgs)
+        .deposit(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
 
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' }).should
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, { value: amount, gasPrice: '0' }).should
         .be.fulfilled
     })
 
-    it('should reject for invalid proof', async () => {
+    it('should reject for invalid proofs', async () => {
       const claim1 = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -281,7 +295,7 @@ contract('PoofVal', (accounts) => {
       })
 
       await poof
-        .deposit(claim2.proof, claim1.args)
+        .deposit(claim2.proofs, claim1.args)
         .should.be.rejectedWith('Invalid deposit proof')
     })
 
@@ -295,7 +309,7 @@ contract('PoofVal', (accounts) => {
         [account1.commitment, account2.commitment, account3.commitment],
         { hashFunction: poseidonHash2 },
       )
-      const { proof, args } = await controller.deposit({
+      const { proofs, args } = await controller.deposit({
         account: account1,
         publicKey,
         amount,
@@ -303,12 +317,12 @@ contract('PoofVal', (accounts) => {
       const malformedArgs = JSON.parse(JSON.stringify(args))
       malformedArgs.account.inputRoot = toFixedHex(fakeTree.root())
       await poof
-        .deposit(proof, malformedArgs)
+        .deposit(proofs, malformedArgs)
         .should.be.rejectedWith('Invalid account root')
     })
 
-    it('should reject with outdated account root (treeUpdate proof validation)', async () => {
-      const { proof, args, account } = await controller.deposit({
+    it('should reject with outdated account root (treeUpdate proofs validation)', async () => {
+      const { proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -319,10 +333,10 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp.proof, tmp.args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp.proofs, tmp.args, { value: amount, gasPrice: '0' })
 
       await poof
-        .deposit(proof, args)
+        .deposit(proofs, args)
         .should.be.rejectedWith('Outdated account merkle root')
 
       const update = await controller.treeUpdate(account.commitment)
@@ -332,17 +346,17 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp2.proof, tmp2.args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp2.proofs, tmp2.args, {
         value: amount,
         gasPrice: '0',
       })
 
       await poof
-        .deposit(proof, args, update.proof, update.args)
+        .deposit(proofs, args, update.proof, update.args)
         .should.be.rejectedWith('Outdated tree update merkle root')
     })
 
-    it('should reject for incorrect commitment (treeUpdate proof validation)', async () => {
+    it('should reject for incorrect commitment (treeUpdate proofs validation)', async () => {
       const claim = await controller.deposit({
         account: new Account(),
         publicKey,
@@ -354,26 +368,26 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp.proof, tmp.args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp.proofs, tmp.args, { value: amount, gasPrice: '0' })
 
       await poof
-        .deposit(claim.proof, claim.args)
+        .deposit(claim.proofs, claim.args)
         .should.be.rejectedWith('Outdated account merkle root')
       const anotherAccount = new Account()
       const update = await controller.treeUpdate(anotherAccount.commitment)
 
       await poof
-        .deposit(claim.proof, claim.args, update.proof, update.args)
+        .deposit(claim.proofs, claim.args, update.proof, update.args)
         .should.be.rejectedWith('Incorrect commitment inserted')
 
       claim.args.account.outputCommitment = update.args.leaf
       await poof
-        .deposit(claim.proof, claim.args, update.proof, update.args)
-        .should.be.rejectedWith('Invalid deposit proof')
+        .deposit(claim.proofs, claim.args, update.proof, update.args)
+        .should.be.rejectedWith('Invalid output root proof')
     })
 
-    it('should reject for incorrect account insert index (treeUpdate proof validation)', async () => {
-      const { proof, args, account } = await controller.deposit({
+    it('should reject for incorrect account insert index (treeUpdate proofs validation)', async () => {
+      const { proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -384,10 +398,10 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp.proof, tmp.args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp.proofs, tmp.args, { value: amount, gasPrice: '0' })
 
       await poof
-        .deposit(proof, args)
+        .deposit(proofs, args)
         .should.be.rejectedWith('Outdated account merkle root')
 
       const update = await controller.treeUpdate(account.commitment)
@@ -397,12 +411,12 @@ contract('PoofVal', (accounts) => {
       malformedArgs.pathIndices = toFixedHex(fakeIndex)
 
       await poof
-        .deposit(proof, args, update.proof, malformedArgs)
+        .deposit(proofs, args, update.proof, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
     })
 
-    it('should reject for invalid tree update proof (treeUpdate proof validation)', async () => {
-      const { proof, args, account } = await controller.deposit({
+    it('should reject for invalid tree update proofs (treeUpdate proofs validation)', async () => {
+      const { proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -413,490 +427,29 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmp.proof, tmp.args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmp.proofs, tmp.args, { value: amount, gasPrice: '0' })
 
       await poof
-        .deposit(proof, args)
+        .deposit(proofs, args)
         .should.be.rejectedWith('Outdated account merkle root')
 
       const update = await controller.treeUpdate(account.commitment)
       await poof
-        .deposit(proof, args, tmp.proof, update.args)
+        .deposit(proofs, args, tmp.proofs[0], update.args)
         .should.be.rejectedWith('Invalid tree update proof')
     })
   })
 
-  describe('#transfer', () => {
-    let fromAccount
-    beforeEach(async () => {
-      const zeroAccount = new Account()
-
-      zeroAccount.amount.should.be.eq.BN(toBN(0))
-
-      const { proof, args, account } = await controller.deposit({
-        account: zeroAccount,
-        publicKey,
-        amount,
-      })
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' })
-      fromAccount = account
-    })
-
-    it('should work', async () => {
-      const toAccount = new Account()
-      const {
-        proof: toProof,
-        args: toArgs,
-        account: outputToAccount,
-      } = await controller.deposit({
-        account: toAccount,
-        amount,
-        publicKey,
-      })
-
-      const {
-        proof: fromProof,
-        args: fromArgs,
-        account: outputFromAccount,
-      } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: toProof,
-        depositArgs: toArgs,
-      })
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-      const { logs } = await poof.transfer(
-        fromProof,
-        fromArgs,
-        toProof,
-        toArgs,
-        fromTreeUpdateProof,
-        fromTreeUpdateArgs,
-        toTreeUpdateProof,
-        toTreeUpdateArgs,
-      )
-
-      const [toAccountLog, fromAccountLog] = logs
-
-      // Verify toAccountLog
-      toAccountLog.event.should.be.equal('NewAccount')
-      toAccountLog.args.commitment.should.be.equal(
-        toFixedHex(outputToAccount.commitment),
-      )
-      toAccountLog.args.index.should.be.eq.BN(1)
-
-      // Verify fromAccountLog
-      fromAccountLog.event.should.be.equal('NewAccount')
-      fromAccountLog.args.commitment.should.be.equal(
-        toFixedHex(outputFromAccount.commitment),
-      )
-      fromAccountLog.args.index.should.be.eq.BN(2)
-    })
-
-    it('should reject for double spend', async () => {
-      const toAccount = new Account()
-      const { proof: toProof, args: toArgs } = await controller.deposit({
-        account: toAccount,
-        amount,
-        publicKey,
-      })
-
-      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: toProof,
-        depositArgs: toArgs,
-      })
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-      await poof.transfer(
-        fromProof,
-        fromArgs,
-        toProof,
-        toArgs,
-        fromTreeUpdateProof,
-        fromTreeUpdateArgs,
-        toTreeUpdateProof,
-        toTreeUpdateArgs,
-      )
-
-      await poof
-        .transfer(
-          fromProof,
-          fromArgs,
-          toProof,
-          toArgs,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Outdated account state')
-    })
-
-    it('should reject with incorrect insert position', async () => {
-      const toAccount = new Account()
-      const { proof: toProof, args: toArgs } = await controller.deposit({
-        account: toAccount,
-        amount,
-        publicKey,
-      })
-
-      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: toProof,
-        depositArgs: toArgs,
-      })
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-
-      const malformedArgs = JSON.parse(JSON.stringify(fromArgs))
-      let fakeIndex = toBN(fromArgs.account.outputPathIndices).sub(toBN('1'))
-      malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
-      await poof
-        .transfer(
-          fromProof,
-          malformedArgs,
-          toProof,
-          toArgs,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Invalid account root')
-      fakeIndex = toBN(fromArgs.account.outputPathIndices).add(toBN('1'))
-      malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
-      await poof
-        .transfer(
-          fromProof,
-          malformedArgs,
-          toProof,
-          toArgs,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Invalid account root')
-      fakeIndex = toBN(fromArgs.account.outputPathIndices).add(
-        toBN('10000000000000000000000000'),
-      )
-      malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
-      // Modulo function results in the same outputPathIndex. This malformation gets caught at proof verification
-      await poof
-        .transfer(
-          fromProof,
-          malformedArgs,
-          toProof,
-          toArgs,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Invalid withdrawal proof')
-
-      await poof.transfer(
-        fromProof,
-        fromArgs,
-        toProof,
-        toArgs,
-        fromTreeUpdateProof,
-        fromTreeUpdateArgs,
-        toTreeUpdateProof,
-        toTreeUpdateArgs,
-      )
-    })
-
-    it('should reject with incorrect external data hash', async () => {
-      const toAccount = new Account()
-      const { proof: toProof, args: toArgs } = await controller.deposit({
-        account: toAccount,
-        amount,
-        publicKey,
-      })
-
-      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: toProof,
-        depositArgs: toArgs,
-      })
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-
-      const malformedArgs = JSON.parse(JSON.stringify(fromArgs))
-      malformedArgs.extDataHash = toFixedHex('0xdeadbeef')
-      await poof
-        .transfer(
-          fromProof,
-          malformedArgs,
-          toProof,
-          toArgs,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Incorrect external data hash')
-      malformedArgs.extDataHash = toFixedHex('0x00')
-      await poof
-        .transfer(
-          fromProof,
-          malformedArgs,
-          toProof,
-          toArgs,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Incorrect external data hash')
-
-      await poof.transfer(
-        fromProof,
-        fromArgs,
-        toProof,
-        toArgs,
-        fromTreeUpdateProof,
-        fromTreeUpdateArgs,
-        toTreeUpdateProof,
-        toTreeUpdateArgs,
-      )
-    })
-
-    it('should reject with incorrect "to" params', async () => {
-      const toAccount = new Account()
-      const { proof: toProof, args: toArgs } = await controller.deposit({
-        account: toAccount,
-        amount,
-        publicKey,
-      })
-
-      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: toProof,
-        depositArgs: toArgs,
-      })
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-
-      // Try to change the 'to' params
-      const { proof: malToProof, args: malToArgs } = await controller.deposit({
-        account: new Account(),
-        amount,
-        publicKey,
-      })
-      const {
-        proof: malToTreeUpdateProof1,
-        args: malToTreeUpdateArgs1,
-        nextAccountTree: malNextAccountTree1,
-      } = await controller.treeUpdate(malToArgs.account.outputCommitment)
-      const { proof: malFromTreeUpdateProof1, args: malFromTreeUpdateArgs1 } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          malNextAccountTree1,
-        )
-      await poof
-        .transfer(
-          fromProof,
-          fromArgs,
-          malToProof,
-          malToArgs,
-          malFromTreeUpdateProof1,
-          malFromTreeUpdateArgs1,
-          malToTreeUpdateProof1,
-          malToTreeUpdateArgs1,
-        )
-        .should.be.rejectedWith(
-          "'from' proof hash does not match 'to' proof hash",
-        )
-
-      // Also try to edit depositProofHash
-      const { args: malFromArgs } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: malToProof,
-        depositArgs: malToArgs,
-      })
-      const {
-        proof: malToTreeUpdateProof2,
-        args: malToTreeUpdateArgs2,
-        nextAccountTree: malNextAccountTree2,
-      } = await controller.treeUpdate(malToArgs.account.outputCommitment)
-      const { proof: malFromTreeUpdateProof2, args: malFromTreeUpdateArgs2 } =
-        await controller.treeUpdate(
-          malFromArgs.account.outputCommitment,
-          malNextAccountTree2,
-        )
-      await poof
-        .transfer(
-          fromProof,
-          malFromArgs,
-          malToProof,
-          malToArgs,
-          malFromTreeUpdateProof2,
-          malFromTreeUpdateArgs2,
-          malToTreeUpdateProof2,
-          malToTreeUpdateArgs2,
-        )
-        .should.be.rejectedWith('Invalid withdrawal proof')
-
-      await poof.transfer(
-        fromProof,
-        fromArgs,
-        toProof,
-        toArgs,
-        fromTreeUpdateProof,
-        fromTreeUpdateArgs,
-        toTreeUpdateProof,
-        toTreeUpdateArgs,
-      )
-    })
-
-    it("should reject for invalid 'from' proof", async () => {
-      const { proof: toProof1, args: toArgs1 } = await controller.deposit({
-        account: new Account(),
-        amount,
-        publicKey,
-      })
-      const { args: toArgs2 } = await controller.deposit({
-        account: new Account(),
-        amount,
-        publicKey,
-      })
-
-      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
-        account: fromAccount,
-        publicKey,
-        depositProof: toProof1,
-        depositArgs: toArgs1,
-      })
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs2.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-
-      await poof
-        .transfer(
-          fromProof,
-          fromArgs,
-          toProof1,
-          toArgs2,
-          fromTreeUpdateProof,
-          fromTreeUpdateArgs,
-          toTreeUpdateProof,
-          toTreeUpdateArgs,
-        )
-        .should.be.rejectedWith('Invalid deposit proof')
-    })
-
-    it('should send fee to relayer', async () => {
-      const fee = toBN(3)
-
-      const { proof: toProof, args: toArgs } = await controller.deposit({
-        account: new Account(),
-        amount: amount.sub(fee),
-        publicKey,
-      })
-
-      const { proof: fromProof, args: fromArgs } = await controller.withdraw({
-        account: fromAccount,
-        amount: toBN(toArgs.amount).sub(fee),
-        publicKey,
-        depositProof: toProof,
-        depositArgs: toArgs,
-        fee,
-        relayer,
-      })
-
-      const {
-        proof: toTreeUpdateProof,
-        args: toTreeUpdateArgs,
-        nextAccountTree,
-      } = await controller.treeUpdate(toArgs.account.outputCommitment)
-      const { proof: fromTreeUpdateProof, args: fromTreeUpdateArgs } =
-        await controller.treeUpdate(
-          fromArgs.account.outputCommitment,
-          nextAccountTree,
-        )
-      const relayerBalanceBefore = toBN(await web3.eth.getBalance(relayer))
-      await poof.transfer(
-        fromProof,
-        fromArgs,
-        toProof,
-        toArgs,
-        fromTreeUpdateProof,
-        fromTreeUpdateArgs,
-        toTreeUpdateProof,
-        toTreeUpdateArgs,
-      )
-      const relayerBalanceAfter = toBN(await web3.eth.getBalance(relayer))
-
-      relayerBalanceAfter.should.be.eq.BN(relayerBalanceBefore.add(fee))
-    })
-  })
-
   describe('#withdraw', () => {
-    let proof, args, account
+    let proofs, args, account
 
     beforeEach(async () => {
-      ;({ proof, args, account } = await controller.deposit({
+      ; ({ proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
       }))
-      await poof.deposit(proof, args, { value: amount, gasPrice: '0' })
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](proofs, args, { value: amount, gasPrice: '0' })
     })
 
     it('should work', async () => {
@@ -913,7 +466,7 @@ contract('PoofVal', (accounts) => {
       })
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
       const { logs } = await poof.withdraw(
-        withdrawSnark.proof,
+        withdrawSnark.proofs,
         withdrawSnark.args,
       )
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
@@ -951,16 +504,16 @@ contract('PoofVal', (accounts) => {
         publicKey,
       })
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(withdrawSnark.proof, withdrawSnark.args)
+      await poof.withdraw(withdrawSnark.proofs, withdrawSnark.args)
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
       await poof
-        .withdraw(withdrawSnark.proof, withdrawSnark.args)
+        .withdraw(withdrawSnark.proofs, withdrawSnark.args)
         .should.be.rejectedWith('Outdated account state')
     })
 
     it('should reject with incorrect insert position', async () => {
-      const { proof, args } = await controller.withdraw({
+      const { proofs, args } = await controller.withdraw({
         account,
         amount,
         recipient,
@@ -970,28 +523,28 @@ contract('PoofVal', (accounts) => {
       let fakeIndex = toBN(args.account.outputPathIndices).sub(toBN('1'))
       malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
       fakeIndex = toBN(args.account.outputPathIndices).add(toBN('1'))
       malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
       fakeIndex = toBN(args.account.outputPathIndices).add(
         toBN('10000000000000000000000000'),
       )
       malformedArgs.account.outputPathIndices = toFixedHex(fakeIndex)
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect account insert index')
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(proof, args)
+      await poof.withdraw(proofs, args)
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
     })
 
     it('should reject with incorrect external data hash', async () => {
-      const { proof, args } = await controller.withdraw({
+      const { proofs, args } = await controller.withdraw({
         account,
         amount,
         recipient,
@@ -1000,20 +553,20 @@ contract('PoofVal', (accounts) => {
       const malformedArgs = JSON.parse(JSON.stringify(args))
       malformedArgs.extDataHash = toFixedHex('0xdeadbeef')
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
       malformedArgs.extDataHash = toFixedHex('0x00')
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(proof, args)
+      await poof.withdraw(proofs, args)
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
     })
 
     it('should reject for amount overflow', async () => {
-      const { proof, args } = await controller.withdraw({
+      const { proofs, args } = await controller.withdraw({
         account,
         amount,
         recipient,
@@ -1022,14 +575,14 @@ contract('PoofVal', (accounts) => {
       const malformedArgs = JSON.parse(JSON.stringify(args))
       malformedArgs.amount = toFixedHex(toBN(2).pow(toBN(248)))
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Amount value out of range')
       malformedArgs.amount = toFixedHex(toBN(2).pow(toBN(256)).sub(toBN(1)))
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Amount value out of range')
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(proof, args)
+      await poof.withdraw(proofs, args)
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
       balanceAfter.should.be.eq.BN(balanceBefore.add(amount))
     })
@@ -1037,7 +590,7 @@ contract('PoofVal', (accounts) => {
     it('should reject for fee overflow', async () => {
       const fee = account.amount.add(toBN(5))
       const fakeAmount = toBN(-5)
-      const { proof, args } = await controller.withdraw({
+      const { proofs, args } = await controller.withdraw({
         account,
         amount: fakeAmount,
         recipient,
@@ -1045,14 +598,14 @@ contract('PoofVal', (accounts) => {
         fee,
       })
       await poof
-        .withdraw(proof, args)
+        .withdraw(proofs, args)
         .should.be.rejectedWith('Amount should be >= than fee')
     })
 
     it('should reject for unfair amount', async () => {
       const fee = toBN(3)
       const amountToWithdraw = amount.sub(fee)
-      const { proof, args } = await controller.withdraw({
+      const { proofs, args } = await controller.withdraw({
         account,
         amount: amountToWithdraw,
         recipient,
@@ -1061,10 +614,10 @@ contract('PoofVal', (accounts) => {
       const malformedArgs = JSON.parse(JSON.stringify(args))
       malformedArgs.amount = toFixedHex(amountToWithdraw.add(amountToWithdraw))
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Invalid withdrawal proof')
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(proof, args)
+      await poof.withdraw(proofs, args)
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
       balanceAfter.should.be.eq.BN(balanceBefore.add(amountToWithdraw))
     })
@@ -1075,7 +628,7 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(tmpReward.proof, tmpReward.args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmpReward.proofs, tmpReward.args, {
         value: amount,
         gasPrice: '0',
       })
@@ -1091,14 +644,14 @@ contract('PoofVal', (accounts) => {
         recipient,
         publicKey,
       })
-      await poof.withdraw(tmpWithdraw.proof, tmpWithdraw.args)
+      await poof.withdraw(tmpWithdraw.proofs, tmpWithdraw.args)
       await poof
-        .withdraw(withdrawal.proof, withdrawal.args)
+        .withdraw(withdrawal.proofs, withdrawal.args)
         .should.be.rejectedWith('Outdated account merkle root')
       const update = await controller.treeUpdate(withdrawal.account.commitment)
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
       await poof.withdraw(
-        withdrawal.proof,
+        withdrawal.proofs,
         withdrawal.args,
         update.proof,
         update.args,
@@ -1109,13 +662,13 @@ contract('PoofVal', (accounts) => {
       rootAfter.should.be.equal(update.args.newRoot)
     })
 
-    it('should reject for invalid proof', async () => {
+    it('should reject for invalid proofs', async () => {
       const tmpReward = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
       })
-      await poof.deposit(tmpReward.proof, tmpReward.args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](tmpReward.proofs, tmpReward.args, {
         value: amount,
         gasPrice: '0',
       })
@@ -1132,7 +685,7 @@ contract('PoofVal', (accounts) => {
         publicKey,
       })
       await poof
-        .withdraw(tmpWithdraw.proof, withdrawal.args)
+        .withdraw(tmpWithdraw.proofs, withdrawal.args)
         .should.be.rejectedWith('Invalid withdrawal proof')
     })
 
@@ -1142,7 +695,7 @@ contract('PoofVal', (accounts) => {
       const fee = toBN(12)
       const fakeFee = 123
       const amountToWithdraw = amount.sub(fee)
-      const { proof, args } = await controller.withdraw({
+      const { proofs, args } = await controller.withdraw({
         account,
         amount: amountToWithdraw,
         recipient,
@@ -1153,17 +706,17 @@ contract('PoofVal', (accounts) => {
       const malformedArgs = JSON.parse(JSON.stringify(args))
       malformedArgs.extData.recipient = fakeRecipient
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
       malformedArgs.extData.recipient = recipient
       malformedArgs.extData.relayer = fakeRelayer
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
       malformedArgs.extData.relayer = relayer
       malformedArgs.extData.fee = fakeFee
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Incorrect external data hash')
       const extDataHash = getExtWithdrawArgsHash({
         fee: fakeFee,
@@ -1176,10 +729,10 @@ contract('PoofVal', (accounts) => {
       malformedArgs.extData.recipient = fakeRecipient
       malformedArgs.extDataHash = extDataHash
       await poof
-        .withdraw(proof, malformedArgs)
+        .withdraw(proofs, malformedArgs)
         .should.be.rejectedWith('Amount should be >= than fee')
       const balanceBefore = toBN(await web3.eth.getBalance(recipient))
-      await poof.withdraw(proof, args)
+      await poof.withdraw(proofs, args)
       const balanceAfter = toBN(await web3.eth.getBalance(recipient))
       balanceAfter.should.be.eq.BN(balanceBefore.add(amountToWithdraw))
     })
@@ -1192,7 +745,7 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(claim1.proof, claim1.args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](claim1.proofs, claim1.args, {
         value: amount,
         gasPrice: '0',
       })
@@ -1202,7 +755,7 @@ contract('PoofVal', (accounts) => {
         publicKey,
         amount,
       })
-      await poof.deposit(claim2.proof, claim2.args, {
+      await poof.methods['deposit(bytes[3],(uint256,uint256,uint256,bytes32,(bytes),(bytes32,bytes32,bytes32,bytes32,uint256,bytes32,bytes32)))'](claim2.proofs, claim2.args, {
         value: amount,
         gasPrice: '0',
       })

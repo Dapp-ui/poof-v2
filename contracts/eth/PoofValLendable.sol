@@ -19,23 +19,23 @@ contract PoofValLendable is PoofVal {
 
   constructor(
     IWERC20Val _debtToken,
-    IVerifier[3] memory _verifiers,
+    IVerifier[5] memory _verifiers,
     bytes32 _accountRoot
   ) PoofVal(_verifiers, _accountRoot) {
     debtToken = _debtToken;
   }
 
-  function deposit(bytes memory _proof, DepositArgs memory _args) external payable override {
-    deposit(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function deposit(bytes[3] memory _proofs, DepositArgs memory _args) external payable override {
+    deposit(_proofs, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function deposit(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     DepositArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public payable override {
-    beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    beforeDeposit(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     uint256 underlyingAmount = debtToken.debtToUnderlying(_args.amount);
     require(msg.value >= underlyingAmount, "Specified amount must equal msg.value");
     debtToken.wrap{value: underlyingAmount}();
@@ -44,17 +44,17 @@ contract PoofValLendable is PoofVal {
     require(ok, "Failed to refund leftover balance to caller");
   }
 
-  function withdraw(bytes memory _proof, WithdrawArgs memory _args) external override {
-    withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function withdraw(bytes[3] memory _proofs, WithdrawArgs memory _args) external override {
+    withdraw(_proofs, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function withdraw(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     WithdrawArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public override {
-    beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    beforeWithdraw(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     require(_args.amount >= _args.extData.fee, "Fee cannot be greater than amount");
     uint256 underlyingAmount = debtToken.debtToUnderlying(_args.amount.sub(_args.extData.fee));
     uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);

@@ -11,6 +11,8 @@ contract PoofBase {
 
   IVerifier public depositVerifier;
   IVerifier public withdrawVerifier;
+  IVerifier public inputRootVerifier;
+  IVerifier public outputRootVerifier;
   IVerifier public treeUpdateVerifier;
 
   mapping(bytes32 => bool) public accountNullifiers;
@@ -31,9 +33,11 @@ contract PoofBase {
   struct AccountUpdate {
     bytes32 inputRoot;
     bytes32 inputNullifierHash;
+    bytes32 inputAccountHash;
     bytes32 outputRoot;
     uint256 outputPathIndices;
     bytes32 outputCommitment;
+    bytes32 outputAccountHash;
   }
 
   struct DepositExtData {
@@ -53,7 +57,6 @@ contract PoofBase {
     uint256 fee;
     address recipient;
     address relayer;
-    bytes32 depositProofHash;
     bytes encryptedAccount;
   }
 
@@ -67,17 +70,46 @@ contract PoofBase {
   }
 
   constructor(
-    IVerifier[3] memory _verifiers,
+    IVerifier[5] memory _verifiers,
     bytes32 _accountRoot
   ) {
     accountRoots[0] = _accountRoot;
     depositVerifier = _verifiers[0];
     withdrawVerifier = _verifiers[1];
-    treeUpdateVerifier = _verifiers[2];
+    inputRootVerifier = _verifiers[2];
+    outputRootVerifier = _verifiers[3];
+    treeUpdateVerifier = _verifiers[4];
+  }
+
+  function toDynamicArray(uint256[3] memory arr) internal pure returns (uint256[] memory) {
+    uint256[] memory res = new uint256[](3);
+    uint256 length = arr.length;
+    for (uint i = 0; i < length; i++) {
+      res[i] = arr[i];
+    }
+    return res;
   }
 
   function toDynamicArray(uint256[4] memory arr) internal pure returns (uint256[] memory) {
     uint256[] memory res = new uint256[](4);
+    uint256 length = arr.length;
+    for (uint i = 0; i < length; i++) {
+      res[i] = arr[i];
+    }
+    return res;
+  }
+
+  function toDynamicArray(uint256[5] memory arr) internal pure returns (uint256[] memory) {
+    uint256[] memory res = new uint256[](5);
+    uint256 length = arr.length;
+    for (uint i = 0; i < length; i++) {
+      res[i] = arr[i];
+    }
+    return res;
+  }
+
+  function toDynamicArray(uint256[6] memory arr) internal pure returns (uint256[] memory) {
+    uint256[] memory res = new uint256[](6);
     uint256 length = arr.length;
     for (uint i = 0; i < length; i++) {
       res[i] = arr[i];
@@ -95,7 +127,7 @@ contract PoofBase {
   }
 
   function beforeDeposit(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     DepositArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
@@ -105,20 +137,41 @@ contract PoofBase {
     require(_args.unitPerUnderlying >= unitPerUnderlying(), "Underlying per unit is overstated");
     require(
       depositVerifier.verifyProof(
-        _proof,
+        _proofs[0],
         toDynamicArray([
           uint256(_args.amount),
           uint256(_args.debt),
           uint256(_args.unitPerUnderlying),
           uint256(_args.extDataHash),
-          uint256(_args.account.inputRoot),
-          uint256(_args.account.inputNullifierHash),
-          uint256(_args.account.outputRoot),
-          uint256(_args.account.outputPathIndices),
-          uint256(_args.account.outputCommitment)
+          uint256(_args.account.inputAccountHash),
+          uint256(_args.account.outputAccountHash)
         ])
       ),
       "Invalid deposit proof"
+    );
+    require(
+      inputRootVerifier.verifyProof(
+        _proofs[1],
+        toDynamicArray([
+          uint256(_args.account.inputRoot),
+          uint256(_args.account.inputNullifierHash),
+          uint256(_args.account.inputAccountHash)
+        ])
+      ),
+      "Invalid input root proof"
+    );
+    require(
+      outputRootVerifier.verifyProof(
+        _proofs[2],
+        toDynamicArray([
+          uint256(_args.account.inputRoot),
+          uint256(_args.account.outputRoot),
+          uint256(_args.account.outputPathIndices),
+          uint256(_args.account.outputCommitment),
+          uint256(_args.account.outputAccountHash)
+        ])
+      ),
+      "Invalid output root proof"
     );
 
     accountNullifiers[_args.account.inputNullifierHash] = true;
@@ -133,7 +186,7 @@ contract PoofBase {
   }
 
   function beforeWithdraw(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     WithdrawArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
@@ -147,20 +200,41 @@ contract PoofBase {
     require(_args.unitPerUnderlying >= unitPerUnderlying(), "Underlying per unit is overstated");
     require(
       withdrawVerifier.verifyProof(
-        _proof,
+        _proofs[0],
         toDynamicArray([
           uint256(_args.amount),
           uint256(_args.debt),
           uint256(_args.unitPerUnderlying),
           uint256(_args.extDataHash),
-          uint256(_args.account.inputRoot),
-          uint256(_args.account.inputNullifierHash),
-          uint256(_args.account.outputRoot),
-          uint256(_args.account.outputPathIndices),
-          uint256(_args.account.outputCommitment)
+          uint256(_args.account.inputAccountHash),
+          uint256(_args.account.outputAccountHash)
         ])
       ),
       "Invalid withdrawal proof"
+    );
+    require(
+      inputRootVerifier.verifyProof(
+        _proofs[1],
+        toDynamicArray([
+          uint256(_args.account.inputRoot),
+          uint256(_args.account.inputNullifierHash),
+          uint256(_args.account.inputAccountHash)
+        ])
+      ),
+      "Invalid input root proof"
+    );
+    require(
+      outputRootVerifier.verifyProof(
+        _proofs[2],
+        toDynamicArray([
+          uint256(_args.account.inputRoot),
+          uint256(_args.account.outputRoot),
+          uint256(_args.account.outputPathIndices),
+          uint256(_args.account.outputCommitment),
+          uint256(_args.account.outputAccountHash)
+        ])
+      ),
+      "Invalid output root proof"
     );
 
     insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);

@@ -1,0 +1,1 @@
+../../build/circuits/InputRootMiniVerifier.sol

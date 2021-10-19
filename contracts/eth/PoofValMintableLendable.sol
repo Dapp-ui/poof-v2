@@ -19,38 +19,37 @@ contract PoofValMintableLendable is PoofValLendable, ERC20 {
     string memory _tokenName,
     string memory _tokenSymbol,
     IWERC20Val _debtToken,
-    IVerifier[3] memory _verifiers,
+    IVerifier[5] memory _verifiers,
     bytes32 _accountRoot
   ) ERC20(_tokenName, _tokenSymbol) PoofValLendable(_debtToken, _verifiers, _accountRoot) {}
 
-  function burn(bytes memory _proof, DepositArgs memory _args) external {
-    burn(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function burn(bytes[3] memory _proofs, DepositArgs memory _args) external {
+    burn(_proofs, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function burn(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     DepositArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
-    beforeDeposit(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    beforeDeposit(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     require(_args.amount == 0, "Cannot use amount for burning");
     _burn(msg.sender, _args.debt);
   }
 
-  function mint(bytes memory _proof, WithdrawArgs memory _args) external {
-    mint(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
+  function mint(bytes[3] memory _proofs, WithdrawArgs memory _args) external {
+    mint(_proofs, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function mint(
-    bytes memory _proof,
+    bytes[3] memory _proofs,
     WithdrawArgs memory _args,
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) public {
-    beforeWithdraw(_proof, _args, _treeUpdateProof, _treeUpdateArgs);
+    beforeWithdraw(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
-    require(_args.extData.depositProofHash == bytes32(0), "depositProofHash should be 0 for minting");
     uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);
     debtToken.unwrap(_args.amount);
 

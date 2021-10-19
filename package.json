@@ -18,12 +18,16 @@
     "prettier:fix": "prettier --write . --config .prettierrc",
     "circuit:deposit": "scripts/buildCircuit.sh Deposit",
     "circuit:withdraw": "scripts/buildCircuit.sh Withdraw",
+    "circuit:inputRoot": "scripts/buildCircuit.sh InputRoot",
+    "circuit:outputRoot": "scripts/buildCircuit.sh OutputRoot",
     "circuit:treeUpdate": "scripts/buildCircuit.sh TreeUpdate",
     "circuit:depositMini": "scripts/buildCircuit.sh DepositMini",
     "circuit:withdrawMini": "scripts/buildCircuit.sh WithdrawMini",
+    "circuit:inputRootMini": "scripts/buildCircuit.sh InputRootMini",
+    "circuit:outputRootMini": "scripts/buildCircuit.sh OutputRootMini",
     "circuit:treeUpdateMini": "scripts/buildCircuit.sh TreeUpdateMini",
-    "circuit:mini": "yarn circuit:depositMini && yarn circuit:withdrawMini && yarn circuit:treeUpdateMini",
-    "circuit": "mkdir -p build/circuits && yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:treeUpdate && yarn circuit:mini",
+    "circuit:mini": "yarn circuit:depositMini && yarn circuit:withdrawMini && yarn circuit:inputRootMini && yarn circuit:outputRootMini && yarn circuit:treeUpdateMini",
+    "circuit": "yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:inputRoot && yarn circuit:outputRoot && yarn circuit:treeUpdate && yarn circuit:mini",
     "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send --filter-paths=WrappedGToken.sol .",
     "postinstall": "yarn circuit"
   },
@@ -65,6 +69,7 @@
     "ffjavascript": "^0.2.38",
     "fixed-merkle-tree": "^0.3.4",
     "snarkjs": "^0.4.7",
+    "threads": "^1.7.0",
     "web3": "^1.5.2",
     "websnark": "^0.0.5"
   }
