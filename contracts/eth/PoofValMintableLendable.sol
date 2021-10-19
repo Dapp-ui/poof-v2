@@ -50,15 +50,16 @@ contract PoofValMintableLendable is PoofValLendable, ERC20 {
   ) public {
     beforeWithdraw(_proofs, _args, _treeUpdateProof, _treeUpdateArgs);
     require(_args.amount == _args.extData.fee, "Amount can only be used for fee");
-    uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);
-    debtToken.unwrap(_args.amount);
-
+    if (_args.amount > 0) {
+      uint256 underlyingFeeAmount = debtToken.debtToUnderlying(_args.extData.fee);
+      debtToken.unwrap(_args.amount);
+      if (underlyingFeeAmount > 0) {
+        (bool ok, ) = _args.extData.relayer.call{value: underlyingFeeAmount}("");
+        require(ok, "Failed to send fee to relayer");
+      }
+    }
     if (_args.debt > 0) {
       _mint(_args.extData.recipient, _args.debt);
-    }
-    if (underlyingFeeAmount > 0) {
-      (bool ok, ) = _args.extData.relayer.call{value: underlyingFeeAmount}("");
-      require(ok, "Failed to send fee to relayer");
     }
   }
 

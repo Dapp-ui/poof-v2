@@ -92,7 +92,9 @@ contract WrappedGToken is ERC20, FeeBase, IWERC20Val, ReentrancyGuard {
   }
 
   function unwrap(uint256 debtAmount) external override {
-    require(debtAmount > 0, "debtAmount cannot be 0");
+    if (debtAmount <= 0) {
+      return;
+    }
     uint256 toReturn = debtToUnderlying(debtAmount);
     totalUnredeemedFee = totalUnredeemedFee.add(pendingFee());
     _burn(msg.sender, debtAmount);

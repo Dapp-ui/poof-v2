@@ -155,8 +155,6 @@ contract('WrappedGToken', (accounts) => {
 
   describe('#unwrap', () => {
     it('should work', async () => {
-      await wToken.unwrap(0).should.be.rejectedWith('debtAmount cannot be 0')
-
       const underlyingBefore = await wToken.debtToUnderlying(toWei('100'))
       const debtBefore = await wToken.underlyingToDebt(100)
 

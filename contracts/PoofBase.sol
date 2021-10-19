@@ -117,15 +117,6 @@ contract PoofBase {
     return res;
   }
 
-  function toDynamicArray(uint256[9] memory arr) internal pure returns (uint256[] memory) {
-    uint256[] memory res = new uint256[](9);
-    uint256 length = arr.length;
-    for (uint i = 0; i < length; i++) {
-      res[i] = arr[i];
-    }
-    return res;
-  }
-
   function beforeDeposit(
     bytes[3] memory _proofs,
     DepositArgs memory _args,
