@@ -2,6 +2,11 @@ require('dotenv').config()
 
 const MerkleTree = require('fixed-merkle-tree')
 
+const DepositVerifier = artifacts.require('DepositVerifier')
+const WithdrawVerifier = artifacts.require('WithdrawVerifier')
+const InputRootVerifier = artifacts.require('InputRootVerifier')
+const OutputRootVerifier = artifacts.require('OutputRootVerifier')
+const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
 const WGFTM = artifacts.require('wgFTM')
 const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
 
