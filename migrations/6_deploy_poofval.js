@@ -33,9 +33,9 @@ module.exports = function (deployer, network) {
         [
           depositVerifier.address,
           withdrawVerifier.address,
-          treeUpdateVerifier.address,
           inputRootVerifier.address,
           outputRootVerifier.address,
+          treeUpdateVerifier.address,
         ],
         toFixedHex(emptyTree.root()),
       )
