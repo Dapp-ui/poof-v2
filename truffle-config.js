@@ -72,7 +72,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('100', 'gwei'),
     },
-    amainnet: {
+    avalanche: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
@@ -92,6 +92,26 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('100', 'gwei'),
     },
+    matic: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://rpc-mainnet.matic.network`,
+        }),
+      network_id: 137,
+      gas: 6000000,
+      gasPrice: toWei('60', 'gwei'),
+    },
+    mumbai: {
+      provider: () =>
+        new HDWalletProvider({
+          privateKeys: [process.env.PRIVATE_KEY],
+          providerOrUrl: `https://rpc-mumbai.matic.network`,
+        }),
+      network_id: 80001,
+      gas: 6000000,
+      gasPrice: toWei('60', 'gwei'),
+    },
   },
 
   // Set default mocha options here, use special reporters etc.
@@ -101,7 +121,7 @@ module.exports = {
 
   plugins: ['truffle-plugin-verify'],
   api_keys: {
-    ftmscan: process.env.FTMSCAN_API_KEY
+    ftmscan: process.env.FTMSCAN_API_KEY,
   },
 
   // Configure your compilers

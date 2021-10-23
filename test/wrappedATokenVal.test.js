@@ -5,10 +5,10 @@ require('chai')
   .should()
 
 const { toBN, toWei, fromWei } = require('web3-utils')
-const WrappedAToken = artifacts.require('WrappedAToken')
+const WrappedATokenVal = artifacts.require('WrappedATokenVal')
 const MockWETHGateway = artifacts.require('MockWETHGateway')
 
-contract('WrappedAToken', (accounts) => {
+contract('WrappedATokenVal', (accounts) => {
   const sender = accounts[0]
   const feeToSetter = accounts[1]
   let wToken
@@ -16,7 +16,7 @@ contract('WrappedAToken', (accounts) => {
 
   before(async () => {
     wethGateway = await MockWETHGateway.new()
-    wToken = await WrappedAToken.new(
+    wToken = await WrappedATokenVal.new(
       'Wrapped',
       'W',
       wethGateway.address,

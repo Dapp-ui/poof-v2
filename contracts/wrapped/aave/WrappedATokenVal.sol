@@ -12,7 +12,7 @@ import "../FeeBase.sol";
 import "../../interfaces/IWETHGateway.sol";
 import "../../interfaces/IWERC20Val.sol";
 
-contract WrappedAToken is ERC20, FeeBase, IWERC20Val, ReentrancyGuard {
+contract WrappedATokenVal is ERC20, FeeBase, IWERC20Val, ReentrancyGuard {
   using SafeERC20 for IERC20;
   using SafeMath for uint256;
 
