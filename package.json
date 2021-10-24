@@ -13,7 +13,8 @@
   "scripts": {
     "compile": "truffle compile",
     "test": "truffle test",
-    "test:abridged": "truffle test --grep=\"should work\" test/poof.base.test.js test/poof.aux.test.js test/poofval.base.test.js test/poofval.aux.test.js && truffle test test/feeBase.test.js test/wrappedCToken.test.js test/wrappedMToken.test.js test/wrappedGToken.test.js",
+    "test:nonpoof": " truffle test test/feeBase.test.js test/wrappedCToken.test.js test/wrappedMToken.test.js test/wrappedATokenVal.test.js",
+    "test:abridged": "truffle test --grep=\"should work\" test/poof.base.test.js test/poof.aux.test.js test/poofval.base.test.js test/poofval.aux.test.js && yarn test:nonpoof",
     "prettier:check": "prettier --check . --config .prettierrc",
     "prettier:fix": "prettier --write . --config .prettierrc",
     "circuit:deposit": "scripts/buildCircuit.sh Deposit",
@@ -28,7 +29,7 @@
     "circuit:treeUpdateMini": "scripts/buildCircuit.sh TreeUpdateMini",
     "circuit:mini": "yarn circuit:depositMini && yarn circuit:withdrawMini && yarn circuit:inputRootMini && yarn circuit:outputRootMini && yarn circuit:treeUpdateMini",
     "circuit": "yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:inputRoot && yarn circuit:outputRoot && yarn circuit:treeUpdate && yarn circuit:mini",
-    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send --filter-paths=WrappedGToken.sol .",
+    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send --filter-paths=WrappedATokenVal.sol .",
     "postinstall": "yarn circuit"
   },
   "devDependencies": {
