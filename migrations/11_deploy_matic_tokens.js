@@ -1,15 +1,15 @@
 require('dotenv').config()
 
-const wWMATIC = artifacts.require('wWMATIC')
+const wamMATIC = artifacts.require('wamMATIC')
 
 module.exports = function (deployer, network) {
   return deployer.then(async () => {
     if (['matic', 'mumbai'].includes(network)) {
       await deployer.deploy(
-        wWMATIC,
+        wamMATIC,
         network === 'matic'
           ? '0x8dF3aad3a84da6b69A4DA8aeC3eA40d9091B2Ac4'
-          : '0xF45444171435d0aCB08a8af493837eF18e86EE27', // WMATIC
+          : '0xF45444171435d0aCB08a8af493837eF18e86EE27', // amMATIC
         network === 'matic'
           ? '0x8dff5e27ea6b7ac08ebfdf9eb090f32ee9a30fcf'
           : '0x9198F13B08E299d85E096929fA9781A1E3d5d827', // lendingPool

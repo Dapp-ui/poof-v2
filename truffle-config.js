@@ -80,7 +80,7 @@ module.exports = {
         }),
       network_id: 43114,
       gas: 6000000,
-      gasPrice: toWei('100', 'gwei'),
+      gasPrice: toWei('30', 'gwei'),
     },
     fuji: {
       provider: () =>
@@ -88,9 +88,9 @@ module.exports = {
           privateKeys: [process.env.PRIVATE_KEY],
           providerOrUrl: `https://api.avax-test.network/ext/bc/C/rpc`,
         }),
-      network_id: 43113,
+      network_id: 1,
       gas: 6000000,
-      gasPrice: toWei('100', 'gwei'),
+      gasPrice: toWei('30', 'gwei'),
     },
     matic: {
       provider: () =>
@@ -106,11 +106,11 @@ module.exports = {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
-          providerOrUrl: `https://rpc-mumbai.matic.network`,
+          providerOrUrl: `https://matic-mumbai.chainstacklabs.com`,
         }),
       network_id: 80001,
       gas: 6000000,
-      gasPrice: toWei('60', 'gwei'),
+      gasPrice: toWei('5', 'gwei'),
     },
   },
 
@@ -122,6 +122,7 @@ module.exports = {
   plugins: ['truffle-plugin-verify'],
   api_keys: {
     ftmscan: process.env.FTMSCAN_API_KEY,
+    polygonscan: process.env.POLYGONSCAN_API_KEY,
   },
 
   // Configure your compilers

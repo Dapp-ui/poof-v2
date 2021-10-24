@@ -7,7 +7,7 @@ const WithdrawVerifier = artifacts.require('WithdrawVerifier')
 const InputRootVerifier = artifacts.require('InputRootVerifier')
 const OutputRootVerifier = artifacts.require('OutputRootVerifier')
 const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
-const wWMATIC = artifacts.require('wWMATIC')
+const wamMATIC = artifacts.require('wamMATIC')
 const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
 
 const { toFixedHex, poseidonHash2 } = require('../src/utils')
@@ -25,7 +25,7 @@ module.exports = function (deployer, network) {
       const outputRootVerifier = await OutputRootVerifier.deployed()
       const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
 
-      const debtToken = await wWMATIC.deployed()
+      const debtToken = await wamMATIC.deployed()
 
       await deployer.deploy(
         PoofValMintableLendable,

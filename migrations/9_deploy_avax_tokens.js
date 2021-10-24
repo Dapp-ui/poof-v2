@@ -1,15 +1,15 @@
 require('dotenv').config()
 
-const wWAVAX = artifacts.require('wWAVAX')
+const waavaWAVAX = artifacts.require('waavaWAVAX')
 
 module.exports = function (deployer, network) {
   return deployer.then(async () => {
     if (['avalanche', 'fuji'].includes(network)) {
       await deployer.deploy(
-        wWAVAX,
+        waavaWAVAX,
         network === 'avalanche'
           ? '0xDFE521292EcE2A4f44242efBcD66Bc594CA9714B'
-          : '0xd00ae08403B9bbb9124bB305C09058E32C39A48c', // WAVAX
+          : '0xf8C78Ba24DD965487f4472dfb280c46800a0c9B6', // aavaWAVAX
         network === 'avalanche'
           ? '0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C'
           : '0x76cc67FF2CC77821A70ED14321111Ce381C2594D', // lendingPool
