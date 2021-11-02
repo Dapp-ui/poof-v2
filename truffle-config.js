@@ -32,15 +32,15 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('0.1', 'gwei'),
     },
-    emainnet: {
+    ethereum: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
           providerOrUrl: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
         }),
-      network_id: 42220,
+      network_id: 1,
       gas: 6000000,
-      gasPrice: toWei('0.1', 'gwei'),
+      gasPrice: toWei('90', 'gwei'),
     },
     kovan: {
       provider: () =>
@@ -50,7 +50,7 @@ module.exports = {
         }),
       network_id: 42,
       gas: 6000000,
-      gasPrice: toWei('100', 'gwei'),
+      gasPrice: toWei('1', 'gwei'),
     },
     fantom: {
       provider: () =>
@@ -78,7 +78,7 @@ module.exports = {
           privateKeys: [process.env.PRIVATE_KEY],
           providerOrUrl: `https://api.avax.network/ext/bc/C/rpc`,
         }),
-      network_id: 43114,
+      network_id: 1,
       gas: 6000000,
       gasPrice: toWei('30', 'gwei'),
     },
@@ -96,7 +96,7 @@ module.exports = {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
-          providerOrUrl: `https://rpc-mainnet.matic.network`,
+          providerOrUrl: `https://polygon-rpc.com`,
         }),
       network_id: 137,
       gas: 6000000,
@@ -121,6 +121,7 @@ module.exports = {
 
   plugins: ['truffle-plugin-verify'],
   api_keys: {
+    etherscan: process.env.ETHERSCAN_API_KEY,
     ftmscan: process.env.FTMSCAN_API_KEY,
     polygonscan: process.env.POLYGONSCAN_API_KEY,
   },
