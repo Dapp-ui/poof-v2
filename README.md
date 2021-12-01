@@ -8,7 +8,7 @@ cd poof-v2
 git checkout groth
 yarn
 yarn circuit:setup
-yarn contribute 0001 0002
+yarn circuit:contribute 0001 0002
 ```
 
 You will be prompted to submit 5 different entropies. This will give you the following files in `build/circuit`
