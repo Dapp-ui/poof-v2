@@ -9,4 +9,5 @@ for circuit in $Circuits; do
   yarn snarkjs zkey export verificationkey build/circuits/${circuit}_circuit_final.zkey build/circuits/${circuit}_verification_key.json
   yarn snarkjs zkey export solidityverifier build/circuits/${circuit}_circuit_final.zkey build/circuits/${circuit}Verifier.sol
   sed -i.bak "s/contract Verifier/contract ${circuit}Verifier/g" build/circuits/${circuit}Verifier.sol
+  sed -i.bak "s/0\.6\.11/0.8.3/g" build/circuits/${circuit}Verifier.sol
 done
