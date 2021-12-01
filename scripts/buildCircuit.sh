@@ -7,7 +7,7 @@ fi
 
 Circuits="Deposit Withdraw InputRoot OutputRoot TreeUpdate DepositMini WithdrawMini InputRootMini OutputRootMini TreeUpdateMini"
 for circuit in $Circuits; do
-  if [ ! -f build/circuits/$circuit_circuit_0000.zkey ]; then
+  if [ ! -f build/circuits/${circuit}_circuit_0000.zkey ]; then
     yarn circom circuits/$circuit.circom --r1cs --wasm
     mkdir -p build/circuits
     mv $circuit.r1cs build/circuits/$circuit.r1cs
