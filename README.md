@@ -5,6 +5,7 @@ Assuming the latest circuits is at version 0001 (and the next version being the 
 ```
 git clone git@github.com:poofcash/poof-v2.git
 cd poof-v2
+git checkout groth
 yarn
 yarn circuit:setup
 yarn contribute 0001 0002
