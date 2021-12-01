@@ -30,6 +30,7 @@ jobs:
       with:
         python-version: '3.8.10' 
     - run: yarn
+    - run: yarn circuit:quickSetup
     - run: pip install -r requirements.txt
     - run: yarn slither
 
