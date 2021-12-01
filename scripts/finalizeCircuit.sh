@@ -1,6 +1,4 @@
 #!/bin/bash
-[ -d "$1" ] || echo "Missing final circuit version argument" || exit
-
 Circuits="Deposit Withdraw InputRoot OutputRoot TreeUpdate DepositMini WithdrawMini InputRootMini OutputRootMini TreeUpdateMini"
 for circuit in $Circuits; do
   if [[ $circuit == *"Mini" ]]; then
