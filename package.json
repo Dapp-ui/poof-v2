@@ -14,7 +14,6 @@
     "compile": "truffle compile",
     "test": "truffle test",
     "test:nonpoof": " truffle test test/feeBase.test.js test/wrappedCToken.test.js test/wrappedMToken.test.js test/wrappedATokenVal.test.js",
-    "test:abridged": "truffle test --grep=\"should work\" test/poof.base.test.js test/poof.aux.test.js test/poofval.base.test.js test/poofval.aux.test.js && yarn test:nonpoof",
     "prettier:check": "prettier --check . --config .prettierrc",
     "prettier:fix": "prettier --write . --config .prettierrc",
     "circuit:setup": "scripts/buildCircuit.sh",

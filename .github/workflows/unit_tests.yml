@@ -28,4 +28,4 @@ jobs:
         cache: 'yarn'
     - run: yarn
     - run: yarn circuit:quickSetup
-    - run: yarn test:abridged
+    - run: yarn test

@@ -253,7 +253,7 @@ contract('PoofMintableLendable', (accounts) => {
     })
 
     it('should fail if debt > user balance', async () => {
-      await controller
+      const withdrawSnark = await controller
         .withdraw({
           account,
           amount: toBN(0),
@@ -262,7 +262,7 @@ contract('PoofMintableLendable', (accounts) => {
           recipient,
           publicKey,
         })
-        .should.be.rejectedWith('T Polynomial is not divisible')
+      await poof.withdraw(withdrawSnark.proofs, withdrawSnark.args).should.be.rejectedWith("Invalid withdrawal proof")
     })
 
     it('should fail if `unitPerUnderlying` is lower than expected', async () => {
@@ -293,7 +293,8 @@ contract('PoofMintableLendable', (accounts) => {
       let balanceAfter = await poof.balanceOf(recipient)
       balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
 
-      await controller
+      // Fail to withdraw because we have an ongoing loan
+      const withdrawSnark = await controller
         .withdraw({
           account: mintSnark.account,
           amount: toBN(1),
@@ -301,7 +302,7 @@ contract('PoofMintableLendable', (accounts) => {
           recipient,
           publicKey,
         })
-        .should.be.rejectedWith('T Polynomial is not divisible')
+      await poof.withdraw(withdrawSnark.proofs, withdrawSnark.args).should.be.rejectedWith("Invalid withdrawal proof")
     })
 
     it('should send fee to relayer', async () => {
