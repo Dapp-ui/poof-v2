@@ -15143,10 +15143,10 @@ snapdragon@^0.8.1:
     keccak "^2.0.0"
     yargs "^12.0.5"
 
-"snarkjs@npm:@poofcash/snarkjs@0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@poofcash/snarkjs/-/snarkjs-0.0.1.tgz#66a35152e29ced6cddec72ea96ce5c08f2be7f71"
-  integrity sha512-M3hfCpsbTTiZa/8uVB1AQ3VFRkORFuwdFPmolhrA3NYvUyQsh2/tcIOKnbcboW2+J+IOMFAoZZzprB397Kmq1g==
+"snarkjs@npm:@poofcash/snarkjs@0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@poofcash/snarkjs/-/snarkjs-0.0.2.tgz#24c5cfec7eb4c0d85e453e189b8128e50dc1ea12"
+  integrity sha512-QX/bi8j706X1Gpq6WbGTL53/iSuTn3gRDkNEmh31XVoOKJ7UwAwENAGKeJ2CJejol9mCaiL7rMBKsUMFroLNDQ==
   dependencies:
     "@iden3/binfileutils" "0.0.8"
     blake2b-wasm "^2.3.0"

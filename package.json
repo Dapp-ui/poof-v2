@@ -21,7 +21,7 @@
     "circuit:contribute": "scripts/contributeCircuit.sh",
     "circuit:finalize": "scripts/finalizeCircuit.sh",
     "circuit:quickSetup": "yarn circuit:setup && yarn circuit:finalize 0000",
-    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send --filter-paths=WrappedATokenVal.sol ."
+    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send,uninitialized-state-variables --filter-paths=WrappedATokenVal.sol ."
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -60,7 +60,7 @@
     "eth-sig-util": "^2.5.3",
     "ffjavascript": "^0.2.38",
     "fixed-merkle-tree": "^0.3.4",
-    "snarkjs": "npm:@poofcash/snarkjs@0.0.1",
+    "snarkjs": "npm:@poofcash/snarkjs@0.0.2",
     "web3": "^1.5.2",
     "websnark": "^0.0.5"
   }
