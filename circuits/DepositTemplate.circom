@@ -37,8 +37,12 @@ template Deposit(levels, zeroLeaf) {
   // negative number that `outputAmount` fits into 248 bits
   component inputAmountCheck = Num2Bits(248);
   component outputAmountCheck = Num2Bits(248);
+  component inputDebtCheck = Num2Bits(248);
+  component outputDebtCheck = Num2Bits(248);
   inputAmountCheck.in <== inputAmount;
   outputAmountCheck.in <== outputAmount;
+  inputDebtCheck.in <== inputDebt;
+  outputDebtCheck.in <== outputDebt;
 
   // Check input account hash
   component inputAccountHasher = Poseidon(5);
