@@ -22,7 +22,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('0.5', 'gwei'),
     },
-    cmainnet: {
+    celo: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
