@@ -22,7 +22,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('0.5', 'gwei'),
     },
-    cmainnet: {
+    celo: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
@@ -62,7 +62,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('100', 'gwei'),
     },
-    fantomtest: {
+    opera: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
@@ -92,7 +92,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('30', 'gwei'),
     },
-    matic: {
+    polygon: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
@@ -106,7 +106,7 @@ module.exports = {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],
-          providerOrUrl: `https://matic-mumbai.chainstacklabs.com`,
+          providerOrUrl: `https://polygon-mumbai.chainstacklabs.com`,
         }),
       network_id: 80001,
       gas: 6000000,

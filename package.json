@@ -14,23 +14,13 @@
     "compile": "truffle compile",
     "test": "truffle test",
     "test:nonpoof": " truffle test test/feeBase.test.js test/wrappedCToken.test.js test/wrappedMToken.test.js test/wrappedATokenVal.test.js",
-    "test:abridged": "truffle test --grep=\"should work\" test/poof.base.test.js test/poof.aux.test.js test/poofval.base.test.js test/poofval.aux.test.js && yarn test:nonpoof",
     "prettier:check": "prettier --check . --config .prettierrc",
     "prettier:fix": "prettier --write . --config .prettierrc",
-    "circuit:deposit": "scripts/buildCircuit.sh Deposit",
-    "circuit:withdraw": "scripts/buildCircuit.sh Withdraw",
-    "circuit:inputRoot": "scripts/buildCircuit.sh InputRoot",
-    "circuit:outputRoot": "scripts/buildCircuit.sh OutputRoot",
-    "circuit:treeUpdate": "scripts/buildCircuit.sh TreeUpdate",
-    "circuit:depositMini": "scripts/buildCircuit.sh DepositMini",
-    "circuit:withdrawMini": "scripts/buildCircuit.sh WithdrawMini",
-    "circuit:inputRootMini": "scripts/buildCircuit.sh InputRootMini",
-    "circuit:outputRootMini": "scripts/buildCircuit.sh OutputRootMini",
-    "circuit:treeUpdateMini": "scripts/buildCircuit.sh TreeUpdateMini",
-    "circuit:mini": "yarn circuit:depositMini && yarn circuit:withdrawMini && yarn circuit:inputRootMini && yarn circuit:outputRootMini && yarn circuit:treeUpdateMini",
-    "circuit": "yarn circuit:deposit && yarn circuit:withdraw && yarn circuit:inputRoot && yarn circuit:outputRoot && yarn circuit:treeUpdate && yarn circuit:mini",
-    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send --filter-paths=WrappedATokenVal.sol .",
-    "postinstall": "yarn circuit"
+    "circuit:setup": "scripts/buildCircuit.sh",
+    "circuit:contribute": "scripts/contributeCircuit.sh",
+    "circuit:finalize": "scripts/finalizeCircuit.sh",
+    "circuit:quickSetup": "yarn circuit:setup && yarn circuit:finalize 0000",
+    "slither": "slither --exclude-dependencies --exclude-informational --exclude-low --exclude-medium --exclude=arbitrary-send,uninitialized-state-variables --filter-paths=WrappedATokenVal.sol ."
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -69,7 +59,7 @@
     "eth-sig-util": "^2.5.3",
     "ffjavascript": "^0.2.38",
     "fixed-merkle-tree": "^0.3.4",
-    "snarkjs": "^0.4.7",
+    "snarkjs": "npm:@poofcash/snarkjs@0.0.2",
     "web3": "^1.5.2",
     "websnark": "^0.0.5"
   }

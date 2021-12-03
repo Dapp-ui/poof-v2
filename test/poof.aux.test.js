@@ -21,6 +21,7 @@ const { getEncryptionPublicKey } = require('eth-sig-util')
 const ERC20Mock = artifacts.require('ERC20Mock')
 const WERC20Mock = artifacts.require('WERC20Mock')
 const PoofMintableLendable = artifacts.require('PoofMintableLendable')
+const PToken = artifacts.require('PToken')
 const DepositVerifier = artifacts.require('DepositMiniVerifier')
 const WithdrawVerifier = artifacts.require('WithdrawMiniVerifier')
 const InputRootVerifier = artifacts.require('InputRootMiniVerifier')
@@ -36,9 +37,7 @@ async function timeReset() {
 }
 
 contract('PoofMintableLendable', (accounts) => {
-  let uToken
-  let dToken
-  let poof
+  let uToken, dToken, poof, pToken
   const amount = toBN(16)
   const debt = amount.div(toBN(2))
   // eslint-disable-next-line no-unused-vars
@@ -66,9 +65,8 @@ contract('PoofMintableLendable', (accounts) => {
     const treeUpdateVerifier = await TreeUpdateVerifier.new()
     uToken = await ERC20Mock.new()
     dToken = await WERC20Mock.new(uToken.address)
+    pToken = await PToken.new('Poof ibCUSD', 'pibCUSD')
     poof = await PoofMintableLendable.new(
-      'Poof ibCUSD',
-      'pibCUSD',
       dToken.address,
       [
         depositVerifier.address,
@@ -78,7 +76,10 @@ contract('PoofMintableLendable', (accounts) => {
         treeUpdateVerifier.address,
       ],
       toFixedHex(emptyTree.root()),
+      pToken.address
     )
+    await pToken.addSupplyManager(poof.address)
+
     // Approve 100 deposits. 100 is arbitrary and is just meant to max approve
     await uToken.approve(poof.address, amount.mul(toBN(100)))
 
@@ -253,7 +254,7 @@ contract('PoofMintableLendable', (accounts) => {
     })
 
     it('should fail if debt > user balance', async () => {
-      await controller
+      const withdrawSnark = await controller
         .withdraw({
           account,
           amount: toBN(0),
@@ -262,7 +263,7 @@ contract('PoofMintableLendable', (accounts) => {
           recipient,
           publicKey,
         })
-        .should.be.rejectedWith('T Polynomial is not divisible')
+      await poof.withdraw(withdrawSnark.proofs, withdrawSnark.args).should.be.rejectedWith("Invalid withdrawal proof")
     })
 
     it('should fail if `unitPerUnderlying` is lower than expected', async () => {
@@ -288,12 +289,13 @@ contract('PoofMintableLendable', (accounts) => {
         recipient,
         publicKey,
       })
-      let balanceBefore = await poof.balanceOf(recipient)
+      let balanceBefore = await pToken.balanceOf(recipient)
       await poof.mint(mintSnark.proofs, mintSnark.args)
-      let balanceAfter = await poof.balanceOf(recipient)
+      let balanceAfter = await pToken.balanceOf(recipient)
       balanceAfter.should.be.eq.BN(balanceBefore.add(debt))
 
-      await controller
+      // Fail to withdraw because we have an ongoing loan
+      const withdrawSnark = await controller
         .withdraw({
           account: mintSnark.account,
           amount: toBN(1),
@@ -301,7 +303,7 @@ contract('PoofMintableLendable', (accounts) => {
           recipient,
           publicKey,
         })
-        .should.be.rejectedWith('T Polynomial is not divisible')
+      await poof.withdraw(withdrawSnark.proofs, withdrawSnark.args).should.be.rejectedWith("Invalid withdrawal proof")
     })
 
     it('should send fee to relayer', async () => {
@@ -318,9 +320,9 @@ contract('PoofMintableLendable', (accounts) => {
       })
 
       const relayerBalanceBefore = await uToken.balanceOf(relayer)
-      const recipientBalanceBefore = await poof.balanceOf(recipient)
+      const recipientBalanceBefore = await pToken.balanceOf(recipient)
       await poof.mint(mintSnark.proofs, mintSnark.args)
-      const recipientBalanceAfter = await poof.balanceOf(recipient)
+      const recipientBalanceAfter = await pToken.balanceOf(recipient)
       const relayerBalanceAfter = await uToken.balanceOf(relayer)
 
       recipientBalanceAfter.should.be.eq.BN(
@@ -399,9 +401,9 @@ contract('PoofMintableLendable', (accounts) => {
         unitPerUnderlying: toBN(2),
         publicKey,
       })
-      let balanceBefore = await poof.balanceOf(sender)
+      let balanceBefore = await pToken.balanceOf(sender)
       await poof.burn(burnSnark.proofs, burnSnark.args)
-      let balanceAfter = await poof.balanceOf(sender)
+      let balanceAfter = await pToken.balanceOf(sender)
       balanceBefore.should.be.eq.BN(balanceAfter.add(debt))
 
       const withdrawSnark = await controller.withdraw({

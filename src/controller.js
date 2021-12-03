@@ -127,35 +127,35 @@ class Controller {
       outputAccountHash: newAccount.accountHash,
     }]
 
-    const { proof: depositProofData } = await snarkjs.plonk.fullProve(
+    const { proof: depositProofData } = await snarkjs.groth16.fullProve(
       utils.stringifyBigInts(inputs[0]),
       this.provingKeys.depositWasm,
       this.provingKeys.depositZkey,
     )
     const depositProof = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(depositProofData),
         [],
       )
     ).split(',')[0]
-    const { proof: inputRootProofData } = await snarkjs.plonk.fullProve(
+    const { proof: inputRootProofData } = await snarkjs.groth16.fullProve(
       utils.stringifyBigInts(inputs[1]),
       this.provingKeys.inputRootWasm,
       this.provingKeys.inputRootZkey,
     )
     const inputRootProof = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(inputRootProofData),
         [],
       )
     ).split(',')[0]
-    const { proof: outputRootProofData } = await snarkjs.plonk.fullProve(
+    const { proof: outputRootProofData } = await snarkjs.groth16.fullProve(
       utils.stringifyBigInts(inputs[2]),
       this.provingKeys.outputRootWasm,
       this.provingKeys.outputRootZkey,
     )
     const outputRootProof = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(outputRootProofData),
         [],
       )
@@ -281,35 +281,35 @@ class Controller {
       outputAccountHash: newAccount.accountHash,
     }]
 
-    const { proof: withdrawProofData } = await snarkjs.plonk.fullProve(
+    const { proof: withdrawProofData } = await snarkjs.groth16.fullProve(
       utils.stringifyBigInts(inputs[0]),
       this.provingKeys.withdrawWasm,
       this.provingKeys.withdrawZkey,
     )
     const withdrawProof = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(withdrawProofData),
         [],
       )
     ).split(',')[0]
-    const { proof: inputRootProofData } = await snarkjs.plonk.fullProve(
+    const { proof: inputRootProofData } = await snarkjs.groth16.fullProve(
       utils.stringifyBigInts(inputs[1]),
       this.provingKeys.inputRootWasm,
       this.provingKeys.inputRootZkey,
     )
     const inputRootProof = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(inputRootProofData),
         [],
       )
     ).split(',')[0]
-    const { proof: outputRootProofData } = await snarkjs.plonk.fullProve(
+    const { proof: outputRootProofData } = await snarkjs.groth16.fullProve(
       utils.stringifyBigInts(inputs[2]),
       this.provingKeys.outputRootWasm,
       this.provingKeys.outputRootZkey,
     )
     const outputRootProof = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(outputRootProofData),
         [],
       )
@@ -361,13 +361,13 @@ class Controller {
       pathElements: accountTreeUpdate.pathElements,
     }
 
-    const { proof: proofData } = await snarkjs.plonk.fullProve(
+    const { proof: proofData } = await snarkjs.groth16.fullProve(
       input,
       this.provingKeys.treeUpdateWasm,
       this.provingKeys.treeUpdateZkey,
     )
     const [proof] = (
-      await snarkjs.plonk.exportSolidityCallData(
+      await snarkjs.groth16.exportSolidityCallData(
         utils.unstringifyBigInts(proofData),
         [],
       )

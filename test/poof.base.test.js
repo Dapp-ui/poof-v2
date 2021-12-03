@@ -116,12 +116,12 @@ contract('Poof', (accounts) => {
 
   describe('#Account', () => {
     it('should throw on negative amount', () => {
-      ;(() => new Account({ amount: toBN(-1) })).should.throw(
+      ; (() => new Account({ amount: toBN(-1) })).should.throw(
         'Cannot create an account with negative amount',
       )
-      ;(() => new Account({ debt: toBN(-1) })).should.throw(
-        'Cannot create an account with negative debt',
-      )
+        ; (() => new Account({ debt: toBN(-1) })).should.throw(
+          'Cannot create an account with negative debt',
+        )
     })
   })
 
@@ -478,7 +478,7 @@ contract('Poof', (accounts) => {
     let proofs, args, account
 
     beforeEach(async () => {
-      ;({ proofs, args, account } = await controller.deposit({
+      ; ({ proofs, args, account } = await controller.deposit({
         account: new Account(),
         publicKey,
         amount,
@@ -804,6 +804,37 @@ contract('Poof', (accounts) => {
         .false
       await poof.isKnownAccountRoot(toFixedHex(0), 0).should.eventually.be.false
       await poof.isKnownAccountRoot(toFixedHex(0), 5).should.eventually.be.false
+    })
+  })
+
+  describe('#setVerifiers', () => {
+    it('should fail for non owner', async () => {
+      await poof.setVerifiers([accounts[0], accounts[1], accounts[2], accounts[3], accounts[4]], { from: recipient }).should.be.rejectedWith("Ownable: caller is not the owner")
+    })
+    it('should work', async () => {
+      const previousVerifiers =
+        [(await poof.depositVerifier()),
+        (await poof.withdrawVerifier()),
+        (await poof.inputRootVerifier()),
+        (await poof.outputRootVerifier()),
+        (await poof.treeUpdateVerifier()),
+        ]
+      const { logs } = await poof.setVerifiers(
+        accounts.slice(0, 5),
+        { from: sender })
+      const nextVerifiers =
+        [(await poof.depositVerifier()),
+        (await poof.withdrawVerifier()),
+        (await poof.inputRootVerifier()),
+        (await poof.outputRootVerifier()),
+        (await poof.treeUpdateVerifier()),
+        ]
+      logs.forEach((log, i) =>
+        log.event.should.be.equal("VerifierUpdated") &&
+        log.args.previousVerifier.should.be.equal(previousVerifiers[i]) &&
+        log.args.nextVerifier.should.be.equal(nextVerifiers[i]) &&
+        nextVerifiers[i].should.be.equal(accounts[i])
+      )
     })
   })
 
