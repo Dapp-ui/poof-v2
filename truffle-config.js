@@ -62,7 +62,7 @@ module.exports = {
       gas: 6000000,
       gasPrice: toWei('100', 'gwei'),
     },
-    opera: {
+    fantomtest: {
       provider: () =>
         new HDWalletProvider({
           privateKeys: [process.env.PRIVATE_KEY],

@@ -19,7 +19,7 @@ module.exports = function (deployer, network) {
   return deployer.then(async () => {
     const isPolygon = ['mumbai'].includes(network)
     const isEthereum = ['kovan'].includes(network)
-    const isFantom = ['opera'].includes(network)
+    const isFantom = ['fantomtest'].includes(network)
     let name, symbol;
     if (isPolygon) {
       name = "Poof MATIC"
