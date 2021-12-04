@@ -124,6 +124,7 @@ module.exports = {
     etherscan: process.env.ETHERSCAN_API_KEY,
     ftmscan: process.env.FTMSCAN_API_KEY,
     polygonscan: process.env.POLYGONSCAN_API_KEY,
+    snowtrace: process.env.SNOWTRACE_API_KEY,
   },
 
   // Configure your compilers

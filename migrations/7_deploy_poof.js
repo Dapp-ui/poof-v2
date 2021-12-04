@@ -11,11 +11,11 @@ const WMCELO = artifacts.require('wmCELO')
 const WMCUSD = artifacts.require('wmcUSD')
 const WMCEUR = artifacts.require('wmcEUR')
 const WGFTM = artifacts.require('wgFTM')
-const waavaWAVAX = artifacts.require('waavaWAVAX')
 const wamMATIC = artifacts.require('wamMATIC')
 const waWETH = artifacts.require('waWETH')
 const PToken = artifacts.require('PToken')
 const PoofMintableLendable = artifacts.require('PoofMintableLendable')
+const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
 
 const { toFixedHex, poseidonHash2 } = require('../src/utils')
 
@@ -25,40 +25,43 @@ const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
 
 const config = {
   celo: [
-    { wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
-    { wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
-    { wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
+    { contract: PoofMintableLendable, wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
+    { contract: PoofMintableLendable, wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
+    { contract: PoofMintableLendable, wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
   ],
   alfajores: [
-    { wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
-    { wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
-    { wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
+    { contract: PoofMintableLendable, wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
+    { contract: PoofMintableLendable, wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
+    { contract: PoofMintableLendable, wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
   ],
   fantom: [
-    { wrapped: WGFTM, name: "Poof FTM", symbol: "pFTM" },
+    { contract: PoofValMintableLendable, wrapped: WGFTM, name: "Poof FTM", symbol: "pFTM" },
   ],
   avalanche: [
-    { wrapped: waavaWAVAX, name: "Poof AVAX", symbol: "pAVAX" },
+    { contract: PoofValMintableLendable, wrapped: "0x71003ce2353c91e05293444a9c3225997ccd353c", name: "Poof AVAX", symbol: "pAVAX" },
   ],
   fuji: [
-    { wrapped: waavaWAVAX, name: "Poof AVAX", symbol: "pAVAX" },
+    { contract: PoofValMintableLendable, wrapped: "0xcb6b9b4b2d519c0adde2142cc695464c39369ab4", name: "Poof AVAX", symbol: "pAVAX" },
   ],
   polygon: [
-    { wrapped: wamMATIC, name: "Poof MATIC", symbol: "pMATIC" },
+    { contract: PoofValMintableLendable, wrapped: wamMATIC, name: "Poof MATIC", symbol: "pMATIC" },
   ],
   mumbai: [
-    { wrapped: wamMATIC, name: "Poof MATIC", symbol: "pMATIC" },
+    { contract: PoofValMintableLendable, wrapped: wamMATIC, name: "Poof MATIC", symbol: "pMATIC" },
   ],
   ethereum: [
-    { wrapped: waWETH, name: "Poof ETH", symbol: "pETH" },
+    { contract: PoofValMintableLendable, wrapped: waWETH, name: "Poof ETH", symbol: "pETH" },
   ],
   kovan: [
-    { wrapped: waWETH, name: "Poof ETH", symbol: "pETH" },
+    { contract: PoofValMintableLendable, wrapped: waWETH, name: "Poof ETH", symbol: "pETH" },
   ],
 }
 
 module.exports = function (deployer, network) {
   return deployer.then(async () => {
+    if (!config[network]) {
+      return;
+    }
     for (const pool of config[network]) {
       const depositVerifier = await DepositVerifier.deployed()
       const withdrawVerifier = await WithdrawVerifier.deployed()
@@ -66,7 +69,7 @@ module.exports = function (deployer, network) {
       const outputRootVerifier = await OutputRootVerifier.deployed()
       const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
 
-      const { wrapped, name, symbol } = pool;
+      const { contract, wrapped, name, symbol } = pool;
       const wrappedToken = wrapped.deployed ? (await wrapped.deployed()).address : wrapped
 
       const pToken = await deployer.deploy(
@@ -74,20 +77,25 @@ module.exports = function (deployer, network) {
         name,
         symbol
       )
-      const poof = await deployer.deploy(
-        PoofMintableLendable,
-        wrappedToken,
-        [
-          depositVerifier.address,
-          withdrawVerifier.address,
-          inputRootVerifier.address,
-          outputRootVerifier.address,
-          treeUpdateVerifier.address,
-        ],
-        toFixedHex(emptyTree.root()),
-        pToken.address
-      )
-      await pToken.addSupplyManager(poof.address)
+      if (
+        contract === PoofMintableLendable ||
+        contract === PoofValMintableLendable
+      ) {
+        const poof = await deployer.deploy(
+          contract,
+          wrappedToken,
+          [
+            depositVerifier.address,
+            withdrawVerifier.address,
+            inputRootVerifier.address,
+            outputRootVerifier.address,
+            treeUpdateVerifier.address,
+          ],
+          toFixedHex(emptyTree.root()),
+          pToken.address
+        )
+        await pToken.addSupplyManager(poof.address)
+      }
     }
   })
 }

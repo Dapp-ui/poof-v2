@@ -19,18 +19,18 @@ module.exports = function (deployer, network) {
       lendingPool = "0xe0fba4fc209b4948668006b2be61711b7f465bae"
       wethGateway = "0xA61ca04DF33B72b235a8A28CfB535bb7A5271B70"
       feeToSetter = "0x16D4DEEfb31E1A10d4C8ba80454bDef7ad83B23c"
-    } else if (network === "avalanche") {
-      contract = waavaWAVAX
-      token = "0xDFE521292EcE2A4f44242efBcD66Bc594CA9714B"
-      lendingPool = "0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C"
-      wethGateway = "0x8a47F74d1eE0e2edEB4F3A7e64EF3bD8e11D27C8"
-      feeToSetter = "0xF3B0aaBc017C306CF1364dBcDC9608Eedc605A3d"
-    } else if (network === "fuji") {
-      contract = waavaWAVAX
-      token = "0xf8C78Ba24DD965487f4472dfb280c46800a0c9B6"
-      lendingPool = "0x76cc67FF2CC77821A70ED14321111Ce381C2594D"
-      wethGateway = "0x1648C14DbB6ccdd5846969cE23DeEC4C66a03335"
-      feeToSetter = "0xF3B0aaBc017C306CF1364dBcDC9608Eedc605A3d"
+      // } else if (network === "avalanche") {
+      //   contract = waavaWAVAX
+      //   token = "0xDFE521292EcE2A4f44242efBcD66Bc594CA9714B"
+      //   lendingPool = "0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C"
+      //   wethGateway = "0x8a47F74d1eE0e2edEB4F3A7e64EF3bD8e11D27C8"
+      //   feeToSetter = "0xF3B0aaBc017C306CF1364dBcDC9608Eedc605A3d"
+      // } else if (network === "fuji") {
+      //   contract = waavaWAVAX
+      //   token = "0xf8C78Ba24DD965487f4472dfb280c46800a0c9B6"
+      //   lendingPool = "0x76cc67FF2CC77821A70ED14321111Ce381C2594D"
+      //   wethGateway = "0x1648C14DbB6ccdd5846969cE23DeEC4C66a03335"
+      //   feeToSetter = "0xF3B0aaBc017C306CF1364dBcDC9608Eedc605A3d"
     } else if (network === "polygon") {
       contract = wamMATIC
       token = "0x8dF3aad3a84da6b69A4DA8aeC3eA40d9091B2Ac4"
@@ -46,7 +46,7 @@ module.exports = function (deployer, network) {
     }
     if (contract) {
       await deployer.deploy(
-        waWETH,
+        contract,
         token,
         lendingPool,
         wethGateway,

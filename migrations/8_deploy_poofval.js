@@ -18,16 +18,12 @@ const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
 module.exports = function (deployer, network) {
   return deployer.then(async () => {
     const isPolygon = ['mumbai'].includes(network)
-    const isAvalanche = ['fuji'].includes(network)
     const isEthereum = ['kovan'].includes(network)
     const isFantom = ['opera'].includes(network)
     let name, symbol;
     if (isPolygon) {
       name = "Poof MATIC"
       symbol = "pMATIC"
-    } else if (isAvalanche) {
-      name = "Poof AVAX"
-      symbol = "pAVAX"
     } else if (isEthereum) {
       name = "Poof ETH"
       symbol = "pETH"
