@@ -21,7 +21,14 @@ contract('V1Migration', (accounts) => {
   })
 
   describe('#mint', () => {
+    it('should fail for non whitelist', async () => {
+      await v1Migration
+        .mint(amount)
+        .should.be.rejectedWith('V1Migration: caller is not on the whitelist')
+    })
+
     it('should work', async () => {
+      await v1Migration.addToWhitelist(sender)
       await token.approve(v1Migration.address, amount)
       const pBalanceBefore = await pToken.balanceOf(sender)
       const balanceBefore = await token.balanceOf(sender)
@@ -30,11 +37,19 @@ contract('V1Migration', (accounts) => {
       const balanceAfter = await token.balanceOf(sender)
       pBalanceAfter.sub(pBalanceBefore).should.be.eq.BN(amount)
       balanceBefore.sub(balanceAfter).should.be.eq.BN(amount)
+      await v1Migration.removeFromWhitelist(sender)
     })
   })
 
   describe('#burn', () => {
+    it('should fail for non whitelist', async () => {
+      await v1Migration
+        .burn(amount)
+        .should.be.rejectedWith('V1Migration: caller is not on the whitelist')
+    })
+
     it('should work', async () => {
+      await v1Migration.addToWhitelist(sender)
       const pBalanceBefore = await pToken.balanceOf(sender)
       const balanceBefore = await token.balanceOf(sender)
       await v1Migration.burn(amount)
@@ -42,6 +57,7 @@ contract('V1Migration', (accounts) => {
       const balanceAfter = await token.balanceOf(sender)
       pBalanceBefore.sub(pBalanceAfter).should.be.eq.BN(amount)
       balanceAfter.sub(balanceBefore).should.be.eq.BN(amount)
+      await v1Migration.removeFromWhitelist(sender)
     })
   })
 })
