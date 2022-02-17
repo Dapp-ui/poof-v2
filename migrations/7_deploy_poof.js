@@ -10,12 +10,14 @@ const TreeUpdateVerifier = artifacts.require('TreeUpdateVerifier')
 const WMCELO = artifacts.require('wmCELO')
 const WMCUSD = artifacts.require('wmcUSD')
 const WMCEUR = artifacts.require('wmcEUR')
+const WMCREAL = artifacts.require('wmcREAL')
 const WGFTM = artifacts.require('wgFTM')
 const wamMATIC = artifacts.require('wamMATIC')
 const waWETH = artifacts.require('waWETH')
 const PToken = artifacts.require('PToken')
 const PoofMintableLendable = artifacts.require('PoofMintableLendable')
 const PoofValMintableLendable = artifacts.require('PoofValMintableLendable')
+const PoofValMintable = artifacts.require('PoofValMintable')
 
 const { toFixedHex, poseidonHash2 } = require('../src/utils')
 
@@ -25,17 +27,22 @@ const emptyTree = new MerkleTree(process.env.MERKLE_TREE_HEIGHT, [], {
 
 const config = {
   celo: [
-    { contract: PoofMintableLendable, wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
-    { contract: PoofMintableLendable, wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
-    { contract: PoofMintableLendable, wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
+    // { contract: PoofMintableLendable, wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
+    // { contract: PoofMintableLendable, wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
+    // { contract: PoofMintableLendable, wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
+    { contract: PoofMintableLendable, wrapped: WMCREAL, name: "Poof cREAL", symbol: "pREAL" },
   ],
   alfajores: [
-    { contract: PoofMintableLendable, wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
-    { contract: PoofMintableLendable, wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
-    { contract: PoofMintableLendable, wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
+    // { contract: PoofMintableLendable, wrapped: WMCELO, name: "Poof CELO", symbol: "pCELO" },
+    // { contract: PoofMintableLendable, wrapped: WMCUSD, name: "Poof cUSD", symbol: "pUSD" },
+    // { contract: PoofMintableLendable, wrapped: WMCEUR, name: "Poof cEUR", symbol: "pEUR" },
+    { contract: PoofMintableLendable, wrapped: WMCREAL, name: "Poof cREAL", symbol: "pREAL" },
   ],
   fantom: [
     { contract: PoofValMintableLendable, wrapped: WGFTM, name: "Poof FTM", symbol: "pFTM" },
+  ],
+  fantomtest: [
+    { contract: PoofValMintable, name: "Poof FTM", symbol: "pFTM" },
   ],
   avalanche: [
     { contract: PoofValMintableLendable, wrapped: "0x71003ce2353c91e05293444a9c3225997ccd353c", name: "Poof AVAX", symbol: "pAVAX" },
@@ -70,18 +77,23 @@ module.exports = function (deployer, network) {
       const treeUpdateVerifier = await TreeUpdateVerifier.deployed()
 
       const { contract, wrapped, name, symbol } = pool;
-      const wrappedToken = wrapped.deployed ? (await wrapped.deployed()).address : wrapped
+
+      let wrappedToken
+      if (wrapped) {
+        wrappedToken = wrapped.deployed ? (await wrapped.deployed()).address : wrapped
+      }
 
       const pToken = await deployer.deploy(
         PToken,
         name,
         symbol
       )
+      let poof
       if (
         contract === PoofMintableLendable ||
         contract === PoofValMintableLendable
       ) {
-        const poof = await deployer.deploy(
+        poof = await deployer.deploy(
           contract,
           wrappedToken,
           [
@@ -94,7 +106,24 @@ module.exports = function (deployer, network) {
           toFixedHex(emptyTree.root()),
           pToken.address
         )
+      } else if (contract === PoofValMintable) {
+        poof = await deployer.deploy(
+          contract,
+          [
+            depositVerifier.address,
+            withdrawVerifier.address,
+            inputRootVerifier.address,
+            outputRootVerifier.address,
+            treeUpdateVerifier.address,
+          ],
+          toFixedHex(emptyTree.root()),
+          pToken.address
+        )
+      }
+      if (poof) {
         await pToken.addSupplyManager(poof.address)
+      } else {
+        throw new Error("Poof was undefined")
       }
     }
   })
